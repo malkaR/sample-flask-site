@@ -1,0 +1,94 @@
+----------------------------------
+Lot18 Code Challenge
+----------------------------------
+
+The purpose of this challenge is for us to get a better idea of how you think,
+organize code and tackle the problems at hand. It will also help you demonstrate 
+your fluency in Python. Let us know if you have any questions.
+
+----------------------------------
+
+Acme wines is a mock wine store that delivers wine all over the country. 
+When selling wine there are a number of rules and regulations that Acme 
+must follow.
+
+You've been tasked with building a mock order validation and management service 
+that will be used to determine if a data set of orders are considered valid or 
+invalid. Acme often gets a large number of orders, so your program will need to
+be able to process a large amount of data quickly and efficiently. Your program 
+should be written as a service with at least three endpoints:
+
+/orders/import
+--------------
+This endpoint should take the contents of a csv file (orders.csv is an example)
+in the body of an HTTP request. It should then validate the orders according to 
+a set of validation rules (given below) and persist them with their validation 
+result. It should also store a list of any validation failures the orders 
+might have.
+
+/orders
+--------------
+This endpoint should return all of the imported orders in JSON format. Each 
+record should include the order id, the name on the order and a flag to 
+indicate whether the order is valid or invalid. 
+
+For example:
+
+{"results": [{"order_id": 4453, 
+              "name": "Guido van Rossum", 
+              "valid": true}]}
+
+You should also be able to filter order by validity (e.g. /orders?valid=1)
+
+/orders/{order_id}
+--------------
+This endpoint should give detailed information about a given order. This should 
+include all the fields from the file, validity status and a list of the 
+validation errors. 
+
+For example:
+
+{"order_id": 2075,
+ "name": "Vinton Cerf",
+ "state": "NJ",
+ "zipcode": 08999,
+ "birthday": "June 23, 1943",
+ "valid": false,
+ "errors": [{"rule": "AllowedStates", "message": "We don't ship to NJ",
+             "rule": "ZipCodeSum", "message": "Your zipcode sum is too large"}]}
+
+
+General Requirements:
+* You should write tests (unit and/or functional)
+* The order of the data columns in the csv file may not always be the same and 
+it's possible new columns will be added in the future.
+* Your code should be modular and reusable. Assume this is the first pass at a
+tool to build on and maintain.
+
+Validation rules:
+1) No wine can ship to New Jersey, Connecticut, Pennsylvania, Massachusetts,
+Illinois, Idaho or Oregon
+2) Valid zip codes must be 5 or 9 digits
+3) Everyone ordering must be 21 or older
+4) Email address must be valid
+5) The sum of digits in a zip code may not exceed 20 ("90210": 9+0+2+1+0 = 12)
+6) Customers from NY may not have .net email addresses
+7) If the state and zip code of the following record is the same as the 
+current record, it automatically passes.
+
+Example:
+id, name, state, zip code
+12345, Rasmus Lerdorf, NY, 10010 <--- Automatically passes because the 
+next order is also from NY and zip code 10010
+45678, Guido van Rossum, NY, 10010 <--- No special consideration, normal 
+validation rules apply
+98765, Linus Torvalds, NY, 10016
+
+Bonus points:
+* Allowed states and active validators can be specified in a config file
+* Add additional filters to /orders (e.g. other fields, limit/offset, 
+partial matches, etc.)
+* Write an HTML/Javascript frontend
+
+Hint:
+* You can use cURL for testing.
