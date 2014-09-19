@@ -6,7 +6,7 @@ import json
 from flask import Flask, g, request, make_response
 from flask.ext.restful import reqparse, abort, Api, Resource
 from flask.ext.sqlalchemy import SQLAlchemy
-
+from datetime import datetime
 
 app = Flask(__name__)
 app.config.from_envvar('FLASKR_SETTINGS', silent=True)
@@ -21,8 +21,11 @@ class Order(db.Model):
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=False)
     name = db.Column(db.String(120))
-    # birthday = db.Column(db.DateTime, nullable=True)
+    email = db.Column(db.String(120), nullable=True)
+    birthday = db.Column(db.Date, nullable=True)
     state = db.Column(db.String(2), nullable=True)
+    zipcode = db.Column(db.Integer, nullable=True)
+
     # valid
     # failures
 
@@ -47,10 +50,10 @@ class Orders(Resource):
         values = {}
         for row in csvreader:
             for i, item in enumerate(row):
+                if headers[i] == 'birthday':
+                    item = datetime.strptime(item, '%b %d, %Y').date()
                 values.update({headers[i]: item}) 
             order = Order(**values)
-            print order.id
-            print order.name
             db.session.add(order)
         db.session.commit()
         return {'success':True}

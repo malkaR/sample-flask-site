@@ -6,11 +6,15 @@ MarkupSafe==0.23
 SQLAlchemy==0.9.7
 Werkzeug==0.9.6
 aniso8601==0.83
+fuzzywuzzy==0.3.2
 itsdangerous==0.24
+lettuce==0.2.19
 mimerender==0.5.4
 python-dateutil==2.2
 python-mimeparse==0.1.4
 pytz==2014.7
 six==1.8.0
+sure==1.2.7
 us==0.8.0
+voluptuous==0.8.5
 wsgiref==0.1.2

@@ -4,6 +4,6 @@ create table orders (
   name text not null,
   email text null,
   state text null,
-  zipcode text null,
+  zipcode integer null,
   birthday date null
 );
