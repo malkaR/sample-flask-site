@@ -5,5 +5,7 @@ create table orders (
   email text null,
   state text null,
   zipcode integer null,
-  birthday date null
+  birthday date null,
+  valid boolean default 1 not null,
+  failures text null
 );

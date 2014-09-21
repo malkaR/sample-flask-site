@@ -6,7 +6,8 @@ import json
 from flask import Flask, g, request, make_response
 from flask.ext.restful import reqparse, abort, Api, Resource
 from flask.ext.sqlalchemy import SQLAlchemy
-from datetime import datetime
+from voluptuous import Schema, Required, All, Length, Range, Invalid, MultipleInvalid
+from datetime import datetime, date
 
 app = Flask(__name__)
 app.config.from_envvar('FLASKR_SETTINGS', silent=True)
@@ -26,8 +27,8 @@ class Order(db.Model):
     state = db.Column(db.String(2), nullable=True)
     zipcode = db.Column(db.Integer, nullable=True)
 
-    # valid
-    # failures
+    valid = db.Column(db.Boolean, default=True)
+    failures = db.Column(db.Text, nullable=True)
 
     def __init__(self, *args, **kwargs):
         for field in kwargs:
@@ -37,7 +38,26 @@ class Order(db.Model):
         return '<Order %d>' % self.id
 
 # Order validation 
+def coerce(typ=int, column_name=None):
+    
+    def f(v):
+        try:
+            return typ(v)
+        except ValueError as e:
+            msg = 'Value: {}; Error: can not be converted to the {} type'.format(str(v), typ)
+            if column_name:
+                msg = 'Field: {}; '.format(column_name) + msg
+            raise Invalid(msg)
+    return f
 
+schema = Schema({
+    Required('id'): All(coerce(int, column_name='order_id'),),
+    Required('name'): All(str, Length(min=1)),
+    'email': str,
+    'birthday' : date,
+    'state': str,
+    'zipcode': str
+})
 
 class Orders(Resource):
     def get(self):
@@ -50,9 +70,18 @@ class Orders(Resource):
         values = {}
         for row in csvreader:
             for i, item in enumerate(row):
+                # create dictionary of column-name:field-value
                 if headers[i] == 'birthday':
                     item = datetime.strptime(item, '%b %d, %Y').date()
-                values.update({headers[i]: item}) 
+                values.update({headers[i]: item})
+            # validate the row
+            try:
+                schema(values)
+            except MultipleInvalid as e:
+                print(e)
+                values['valid'] = False
+                values['failures'] = str(e)
+            # create database record
             order = Order(**values)
             db.session.add(order)
         db.session.commit()

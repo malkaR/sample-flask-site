@@ -51,7 +51,22 @@ def check_order_zipcode(step, expected):
 def check_order_birthday(step, expected):
     order = world.db.session.query(Order).first()
     assert date.strftime(order.birthday, '%b %d, %Y') == expected, \
-        "Got %s" % order.birthday       
+        "Got %s" % order.birthday  
+
+@step('I see the order validity (.*) present in the database')
+def check_order_validity(step, expected):
+    expected = bool(expected)
+    order = world.db.session.query(Order).first()
+    assert order.valid == expected, \
+        "Got %s" % order.valid   
+
+@step('I see the order validation failures (.*) present in the database')
+def check_order_failures(step, expected):
+    order = world.db.session.query(Order).first()
+    if expected == 'None':
+        expected = None
+    assert order.failures == expected, \
+        "Got %s" % order.failures  
         
 @step('I receive a successful status code of (\d+)')
 def check_status_code(step, expected):
