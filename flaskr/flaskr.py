@@ -50,12 +50,25 @@ def coerce(typ=int, column_name=None):
             raise Invalid(msg)
     return f
 
+def allowed_states():
+    """
+    No wine can ship to New Jersey, Connecticut, Pennsylvania, Massachusetts,
+    Illinois, Idaho or Oregon
+    """
+    def f(v):
+        if v in ['NJ', 'CT', 'PA', 'MA', 'OR', 'ID', 'IL']:
+            msg = 'Field: state; Value: {}; Error: Wine can not ship to this state'.format(v)
+            raise Invalid(msg)
+        return v
+
+    return f
+
 schema = Schema({
     Required('id'): All(coerce(int, column_name='order_id'),),
     Required('name'): All(str, Length(min=1)),
     'email': str,
     'birthday' : date,
-    'state': str,
+    'state': All(str, allowed_states()),
     'zipcode': str
 })
 

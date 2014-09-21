@@ -16,5 +16,6 @@ Feature: Import Orders In Bulk
          
 
     Examples:
-    	| file_name         |  id   |       name      |                    email                   | state |  zipcode |   birthday   | valid |  failures  |
-    	| OneValidOrder.csv |  2499 | Stone Dominguez |  ligula.Aliquam.erat@semperegestasurna.com |  IA   |   05938  | Feb 27, 1963 |   1   |    None    |
+    	| file_name         |  id   |       name      |                    email                   | state |  zipcode |   birthday   | valid |             failures             |
+    	| OneValidOrder.csv |  2499 | Stone Dominguez |  ligula.Aliquam.erat@semperegestasurna.com |  IA   |   05938  | Feb 27, 1963 |   1   |                None              |
+        | OneInvalidOrderState.csv |  2399 | Stone Dominguez |  ligula.Aliquam.erat@semperegestasurna.com |  NJ   |   05938  | Feb 27, 1963 |   0   |    Field: state; Value: NJ; Error: Wine can not ship to this state    |

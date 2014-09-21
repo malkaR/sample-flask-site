@@ -55,7 +55,7 @@ def check_order_birthday(step, expected):
 
 @step('I see the order validity (.*) present in the database')
 def check_order_validity(step, expected):
-    expected = bool(expected)
+    expected = bool(int(expected))
     order = world.db.session.query(Order).first()
     assert order.valid == expected, \
         "Got %s" % order.valid   
@@ -65,8 +65,11 @@ def check_order_failures(step, expected):
     order = world.db.session.query(Order).first()
     if expected == 'None':
         expected = None
-    assert order.failures == expected, \
-        "Got %s" % order.failures  
+        assert order.failures == expected, \
+            "Got %s" % order.failures  
+    else:
+        assert expected in order.failures, \
+            "Got %s" % order.failures
         
 @step('I receive a successful status code of (\d+)')
 def check_status_code(step, expected):
