@@ -1,0 +1,39 @@
+# fields and their validators
+# a validator can be a type, a requred value, a list of forbidden values, or any other custom function
+# every field can have a type, functions
+# every function can have an args list, kwargs list
+# the args and kwargs list must be numbered: one, two, three ...
+# every kwargs item must have a name and val
+# coerce
+# forbidden_values
+order_fields:
+    required_fields:
+        id:
+            functions:
+                coerce_to_type:
+                    kwargs:
+                        typ: int
+                        column_name: order_id
+
+        name:
+            type: str
+            functions:
+                Length:
+                    kwargs:
+                        min: 1
+    optional_fields:
+        email:
+            type: str
+        birthday:
+            type: date
+        zipcode:
+            type: str
+        state:
+            type: str
+            functions:
+                forbidden_values:
+                    kwargs:
+                        values_list: ['NJ', 'CT', 'PA', 'MA', 'OR', 'ID', 'IL']
+                        column_name: state
+
+
