@@ -5,17 +5,27 @@ from contextlib import closing
 sys.path.append(os.path.abspath(os.pardir))
 import flaskr
 from lettuce import *
+from flask.ext.sqlalchemy import SQLAlchemy
 
 @before.all
-def setUp():
+def set_up():
+    """
+    Create a new empty database.
+    """
     os.environ['FLASKR_SETTINGS'] = 'settings_test.py'
-    init_db() 
+    init_db()
     world.db = flaskr.db
-    world.app = flaskr.app.test_client() 
+    world.app = flaskr.app.test_client()
 
 @after.all
-def tearDown(self):
-  os.unlink(flaskr.app.config['DATABASE'])
+def tear_down(total):
+    """
+    Delete the database file to isolate state between scenarios.
+    """
+    try:
+        os.unlink(flaskr.app.config['DATABASE'])
+    except OSError:
+        pass
 
 # Test Set Up Helper functions
 

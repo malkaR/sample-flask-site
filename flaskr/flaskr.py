@@ -5,7 +5,7 @@ import os
 import yaml
 # import json
 from flask import Flask, g, request, make_response
-from flask.ext.restful import reqparse, abort, Api, Resource
+from flask.ext.restful import reqparse, abort, Api, Resource, fields, marshal
 from flask.ext.sqlalchemy import SQLAlchemy
 from voluptuous import Schema, Required, All, Length, Range, Invalid, MultipleInvalid
 from datetime import datetime, date
@@ -138,7 +138,7 @@ class Order(db.Model):
 
 schema = create_schema_from_config(order_fields)
 
-class Orders(Resource):
+class OrderImport(Resource):
     def get(self):
         return {'hello': 'world'}
 
@@ -157,7 +157,6 @@ class Orders(Resource):
             try:
                 schema(values)
             except MultipleInvalid as e:
-                print(e)
                 values['valid'] = False
                 values['failures'] = str(e)
             # create database record
@@ -166,9 +165,26 @@ class Orders(Resource):
         db.session.commit()
         return {'success':True}
 
+"""
+{"results": [{"order_id": 4453, 
+              "name": "Guido van Rossum", 
+              "valid": true}]}
+"""
 
+resource_fields = {
+    'id':   fields.Integer,
+    'name':    fields.String,
+    'valid':    fields.Boolean
+}
+
+class Orders(Resource):
+
+    # @marshal_with(resource_fields)
+    def get(self, **kwargs):
+        return {"results": marshal(db.session.query(Order).all(), resource_fields)}
 # Routes
-api.add_resource(Orders, '/')
+api.add_resource(OrderImport, '/orders/import')
+api.add_resource(Orders, '/orders')
 
     
 
