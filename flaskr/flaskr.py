@@ -1,6 +1,7 @@
 import sqlite3
 import us
 import csv
+import copy
 import os
 import yaml
 # import json
@@ -15,6 +16,7 @@ app.config.from_envvar('FLASKR_SETTINGS', silent=True)
 api = Api(app)
 db = SQLAlchemy(app)
 US_STATES = [state.abbr for state in us.states.STATES]
+DATE_FORMAT = '%b %d, %Y'
 # US_STATES_ICASE = US_STATES + [state.lower() for state in US_STATES]
 
 order_fields_file = open('/Users/malka/Documents/job/Lot18Code/flaskr/config/field_validators.yaml')
@@ -152,7 +154,7 @@ class OrderImport(Resource):
             for i, item in enumerate(row):
                 # create dictionary of column-name:field-value
                 if headers[i] == 'birthday':
-                    item = datetime.strptime(item, '%b %d, %Y').date()
+                    item = datetime.strptime(item, DATE_FORMAT).date()
                 values.update({headers[i]: item})
             # validate the row
             try:
@@ -169,10 +171,24 @@ class OrderImport(Resource):
 
 
 basic_resource_fields = {
-    'id':   fields.Integer,
-    'name':    fields.String,
+    'id':       fields.Integer,
+    'name':     fields.String,
     'valid':    fields.Boolean
 }
+
+class DateField(fields.Raw):
+    def format(self, value):
+        return datetime.strftime(value, DATE_FORMAT)
+
+full_resource_fields = {
+    'email':    fields.String,
+    'birthday': DateField,
+    'state':    fields.String,
+    'zipcode':  fields.Integer,
+    'failures': fields.String
+}
+
+full_resource_fields.update(basic_resource_fields)
 
 BOOLEAN_CHOICES = ['0', '1']
 
@@ -180,7 +196,7 @@ parser = reqparse.RequestParser()
 arg_kwargs = dict(location='args', default=None)
 parser.add_argument('valid', type=int, choices=BOOLEAN_CHOICES, help='the parameter value for valid must be either 1 or 0',  **arg_kwargs)
 parser.add_argument('state', type=str, choices=US_STATES, help='the parameter value for state must be an uppercase abbreviated US state', **arg_kwargs)
-parser.add_argument('zipcode', type=int, **arg_kwargs)
+parser.add_argument('zipcode', type=int, help='the parameter value for zipcode must be a number', **arg_kwargs)
 # parser.add_argument('name', type=str)
 
 
@@ -201,9 +217,15 @@ class Orders(Resource):
                 filter_kwargs.update({arg:args[arg]})
         return {"results": marshal(db.session.query(Order).filter_by(**filter_kwargs).all(), basic_resource_fields)}
 
+class FullOrder(Resource):
+
+    def get(self, order_id):
+        return marshal(db.session.query(Order).filter_by(id=order_id).first(), full_resource_fields)
+
 # Routes
 api.add_resource(OrderImport, '/orders/import')
 api.add_resource(Orders, '/orders')
+api.add_resource(FullOrder, '/orders/<string:order_id>')
 
     
 
