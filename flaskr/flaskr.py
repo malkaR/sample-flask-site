@@ -5,7 +5,7 @@ import os
 import yaml
 # import json
 from flask import Flask, g, request, make_response
-from flask.ext.restful import reqparse, abort, Api, Resource, fields, marshal
+from flask.ext.restful import abort, Api, Resource, fields, marshal, reqparse
 from flask.ext.sqlalchemy import SQLAlchemy
 from voluptuous import Schema, Required, All, Length, Range, Invalid, MultipleInvalid
 from datetime import datetime, date
@@ -15,6 +15,7 @@ app.config.from_envvar('FLASKR_SETTINGS', silent=True)
 api = Api(app)
 db = SQLAlchemy(app)
 US_STATES = [state.abbr for state in us.states.STATES]
+# US_STATES_ICASE = US_STATES + [state.lower() for state in US_STATES]
 
 order_fields_file = open('/Users/malka/Documents/job/Lot18Code/flaskr/config/field_validators.yaml')
 # use safe_load instead load
@@ -143,7 +144,7 @@ class OrderImport(Resource):
         return {'hello': 'world'}
 
     def put(self):
-        lines = request.form['data'].split('\\n')
+        lines = request.form['data'].split('\\n') #TODO: tell user that param is called data with reqparse
         csvreader = csv.reader(lines, delimiter='|')
         headers = csvreader.next()
         values = {}
@@ -173,9 +174,19 @@ basic_resource_fields = {
     'valid':    fields.Boolean
 }
 
+BOOLEAN_CHOICES = ['0', '1']
+
+parser = reqparse.RequestParser()
+arg_kwargs = dict(location='args', default=None)
+parser.add_argument('valid', type=int, choices=BOOLEAN_CHOICES, help='the parameter value for valid must be either 1 or 0',  **arg_kwargs)
+parser.add_argument('state', type=str, choices=US_STATES, help='the parameter value for state must be an uppercase abbreviated US state', **arg_kwargs)
+parser.add_argument('zipcode', type=int, **arg_kwargs)
+# parser.add_argument('name', type=str)
+
+
 class Orders(Resource):
 
-    def get(self, **kwargs):
+    def get(self):
         """
         Returns the list of orders.
         For example:
@@ -183,7 +194,13 @@ class Orders(Resource):
                       "name": "Guido van Rossum", 
                       "valid": true}]}
         """
-        return {"results": marshal(db.session.query(Order).all(), basic_resource_fields)}
+        args = parser.parse_args()
+        filter_kwargs = {}
+        for arg in 'valid state zipcode'.split():
+            if args[arg] != None:
+                filter_kwargs.update({arg:args[arg]})
+        return {"results": marshal(db.session.query(Order).filter_by(**filter_kwargs).all(), basic_resource_fields)}
+
 # Routes
 api.add_resource(OrderImport, '/orders/import')
 api.add_resource(Orders, '/orders')
