@@ -27,13 +27,22 @@ order_fields:
         birthday:
             type: date
         zipcode:
-            type: str
+            functions:
+                coerce_to_type:
+                    kwargs:
+                        typ: int
+                        column_name: zipcode
+                LengthIn:
+                    kwargs:
+                        container: $ZIPCODE_LENGTHS
         state:
             type: str
             functions:
-                forbidden_values:
+                # Upper:
+
+                ValueNotIn:
                     kwargs:
-                        values_list: ['NJ', 'CT', 'PA', 'MA', 'OR', 'ID', 'IL']
+                        container: ['NJ', 'CT', 'PA', 'MA', 'OR', 'ID', 'IL']
                         column_name: state
 
 

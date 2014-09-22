@@ -4,7 +4,7 @@ import json
 sys.path.append(os.path.abspath(os.pardir))
 from datetime import date
 from lettuce import * 
-from flaskr import Order, basic_resource_fields
+from flaskr import Order, basic_resource_fields, LENGTH_ERRROR, FORBIDDEN_VALUE_ERROR
 from terrain import init_db
 
 # --------- Steps to prepare data fixtures --------- #
@@ -67,7 +67,7 @@ def check_order_state(step, expected):
     assert order.state == expected, \
         "Got %s" % order.state
 
-@step('I see the order zipcode (\d{5}) present in the database')
+@step('I see the order zipcode (\d*) present in the database')
 def check_order_zipcode(step, expected):
     expected = int(expected)
     order = world.db.session.query(Order).first()
@@ -87,16 +87,22 @@ def check_order_validity(step, expected):
     assert order.valid == expected, \
         "Got %s" % order.valid   
 
-@step('I see the order validation failures (.*) present in the database')
-def check_order_failures(step, expected):
+@step('I see the order validation errors (.*) present in the database')
+def check_order_errors(step, expected):
     order = world.db.session.query(Order).first()
     if expected == 'None':
         expected = None
-        assert order.failures == expected, \
-            "Got %s" % order.failures  
+        assert order.errors == expected, \
+            "Got %s" % order.errors  
     else:
-        assert expected in order.failures, \
-            "Got %s" % order.failures
+        expected = expected.split(',')
+        order_errors = list(order.errors)
+        for error in expected:
+            error_msg = eval(error).split('{}')
+            error_msg.remove('')
+            error_msg = ''.join(error_msg)
+            assert error_msg in order.errors, \
+                "Got %s, missing %s" % (order.errors, error_msg)
 
 # --------- Steps to use when multiple records exist --------- #
 

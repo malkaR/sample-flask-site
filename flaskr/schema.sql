@@ -7,5 +7,5 @@ create table orders (
   zipcode integer null,
   birthday date null,
   valid boolean default 1 not null,
-  failures text null
+  errors text null
 );

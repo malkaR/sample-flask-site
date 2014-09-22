@@ -10,6 +10,7 @@ from flask.ext.restful import abort, Api, Resource, fields, marshal, reqparse
 from flask.ext.sqlalchemy import SQLAlchemy
 from voluptuous import Schema, Required, All, Length, Range, Invalid, MultipleInvalid
 from datetime import datetime, date
+from functools import wraps
 
 app = Flask(__name__)
 app.config.from_envvar('FLASKR_SETTINGS', silent=True)
@@ -19,26 +20,51 @@ US_STATES = [state.abbr for state in us.states.STATES]
 DATE_FORMAT = '%b %d, %Y'
 # US_STATES_ICASE = US_STATES + [state.lower() for state in US_STATES]
 
-order_fields_file = open('/Users/malka/Documents/job/Lot18Code/flaskr/config/field_validators.yaml')
-# use safe_load instead load
-order_fields = yaml.safe_load(order_fields_file)
-order_fields_file.close()
+
 
 # print order_fields
 
-def forbidden_values(values_list=[], column_name=None):
+# validation error messages
+LENGTH_ERRROR = 'length must be valid, choose from {}'
+FORBIDDEN_VALUE_ERROR = 'the value is not allowed, do not choose from {}'
+ZIPCODE_LENGTHS = [5, 9]
+FORBIDDEN_STATES = ['NJ', 'CT', 'PA', 'MA', 'OR', 'ID', 'IL']
+# parse yaml validators
+order_fields_file = open('/Users/malka/Documents/job/Lot18Code/flaskr/config/field_validators.yaml')
+from string import Template
+s = Template(order_fields_file.read())
+s = s.substitute(ZIPCODE_LENGTHS=ZIPCODE_LENGTHS)
+# use safe_load instead load
+order_fields = yaml.load(s)
+order_fields_file.close()
+
+def ValueNotIn(container, msg=None, column_name=None):
     """
-    The field's value can not be one of the values_list items.
+    The field's value can not be one of the container items.
     """
+    if msg == None:
+        msg = FORBIDDEN_VALUE_ERROR.format(container)
+  
     def f(v):
-        if v in values_list:
-            msg = 'Value: {}; Error: This is not an allowed value'.format(v)
-            if column_name:
-                msg = 'Field: {}; '.format(column_name) + msg
+        if v in container:
             raise Invalid(msg)
         return v
 
     return f
+
+def LengthIn(container, msg=None, column_name=None):
+    """Validate that the length of value is in a collection."""
+
+    if msg == None:
+        msg = LENGTH_ERRROR.format(container)
+        if column_name != None:
+            msg = '{} {}'.format(column_name, msg)
+
+    def validator(value):
+        if not len(value) in container:
+            raise Invalid(msg)
+        return value
+    return validator
 
 def coerce_to_type(typ=int, column_name=None):
     if type(typ) == str:
@@ -116,7 +142,7 @@ class Order(db.Model):
     zipcode = db.Column(db.Integer, nullable=True)
 
     valid = db.Column(db.Boolean, default=True)
-    failures = db.Column(db.Text, nullable=True)
+    errors = db.Column(db.Text, nullable=True)
 
     def __init__(self, *args, **kwargs):
         for field in kwargs:
@@ -161,7 +187,10 @@ class OrderImport(Resource):
                 schema(values)
             except MultipleInvalid as e:
                 values['valid'] = False
-                values['failures'] = str(e)
+                values['errors'] = []
+                for error in e.errors:
+                    values['errors'].append({'field':error.path[0], 'message':error.error_message})
+                values['errors'] = str(values['errors'])
             # create database record
             order = Order(**values)
             db.session.add(order)
@@ -185,7 +214,7 @@ full_resource_fields = {
     'birthday': DateField,
     'state':    fields.String,
     'zipcode':  fields.Integer,
-    'failures': fields.String
+    'errors': fields.String
 }
 
 full_resource_fields.update(basic_resource_fields)
