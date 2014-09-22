@@ -1,9 +1,10 @@
 import os
 import sys
+import json
 sys.path.append(os.path.abspath(os.pardir))
 from datetime import date
 from lettuce import * 
-from flaskr import Order
+from flaskr import Order, basic_resource_fields
 from terrain import init_db
 
 # --------- Steps to prepare data fixtures --------- #
@@ -97,15 +98,34 @@ def check_order_failures(step, expected):
         assert expected in order.failures, \
             "Got %s" % order.failures
 
-
-
-
 # --------- Steps to use when multiple records exist --------- #
-        # The the results list in the response contains 3 items
-        # Then each item in the results list match the expected resource fields
-        # Then the result items values match the database record values
 
-        # The the results list in the response contains 3 items
-        # Then each item in the results list match the expected resource fields
-        # Then the result items values match the database record values
+@step('the results list in the response contains (\d+) items')
+def check_result_length(step, expected):
+    expected = int(expected)
+    results = json.loads(world.response.get_data())['results']
+    assert len(results) == expected, \
+        "Got %d results" % len(results)
+
+@step('each item in the results list contains the expected resource fields')
+def check_basic_fields_present(step):
+    results = json.loads(world.response.get_data())['results']
+    for field in basic_resource_fields.keys():
+        for result_dict in results:
+            assert field in result_dict, \
+                "Got result dictionary: %s, missing the field %s" % (str(result_dict), field)
+
+@step('each of the result items\'s values match the database record\'s values')
+def check_values_match_to_database(step):
+    results = json.loads(world.response.get_data())['results']
+    for result_dict in results:
+        order = world.db.session.query(Order).filter_by(id=result_dict['id']).first()
+        
+        for field in [f for f in basic_resource_fields.keys() if f != 'id']:
+            assert getattr(order, field) == result_dict[field], \
+                "Got %s, expected %s" % (result_dict[field], getattr(order, field))
+
+
+
+
 

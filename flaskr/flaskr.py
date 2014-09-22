@@ -165,13 +165,9 @@ class OrderImport(Resource):
         db.session.commit()
         return {'success':True}
 
-"""
-{"results": [{"order_id": 4453, 
-              "name": "Guido van Rossum", 
-              "valid": true}]}
-"""
 
-resource_fields = {
+
+basic_resource_fields = {
     'id':   fields.Integer,
     'name':    fields.String,
     'valid':    fields.Boolean
@@ -179,9 +175,15 @@ resource_fields = {
 
 class Orders(Resource):
 
-    # @marshal_with(resource_fields)
     def get(self, **kwargs):
-        return {"results": marshal(db.session.query(Order).all(), resource_fields)}
+        """
+        Returns the list of orders.
+        For example:
+        {"results": [{"order_id": 4453, 
+                      "name": "Guido van Rossum", 
+                      "valid": true}]}
+        """
+        return {"results": marshal(db.session.query(Order).all(), basic_resource_fields)}
 # Routes
 api.add_resource(OrderImport, '/orders/import')
 api.add_resource(Orders, '/orders')
