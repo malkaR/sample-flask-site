@@ -36,13 +36,16 @@ order_fields_validators:
                         max: $TODAY_LESS_21_YEARS                
         zipcode:
             functions:
-                LengthIn:
-                    kwargs:
-                        container: $ZIPCODE_LENGTHS
                 CoerceTo:
                     kwargs:
                         typ: int
                         column_name: zipcode
+                        return_original: true
+                        msg: $COERCE_INT_ERROR
+                LengthIn:
+                    kwargs:
+                        container: $ZIPCODE_LENGTHS 
+                         
         state:
             type: str
             functions:
@@ -58,6 +61,7 @@ order_fields_defaults:
         coerce_failure_msg: $COERCE_DATE_ERROR
         failure_value: null
     zipcode:
+        coerce_failure_msg: $COERCE_INT_ERROR
         failure_value: null
 
 
