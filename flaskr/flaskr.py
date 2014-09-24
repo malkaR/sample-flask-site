@@ -8,9 +8,9 @@ import yaml
 from flask import Flask, g, request, make_response
 from flask.ext.restful import abort, Api, Resource, fields, marshal, reqparse
 from flask.ext.sqlalchemy import SQLAlchemy
-from voluptuous import Schema, Required, All, Length, Range, Invalid, MultipleInvalid
 from datetime import datetime, date
 from functools import wraps
+import sys
 
 app = Flask(__name__)
 app.config.from_envvar('FLASKR_SETTINGS', silent=True)
@@ -21,22 +21,91 @@ DATE_FORMAT = '%b %d, %Y'
 # US_STATES_ICASE = US_STATES + [state.lower() for state in US_STATES]
 
 
-
-# print order_fields
+sys.path.append(os.path.abspath(os.pardir))
+from voluptuous import Schema, Required, All, Length, Range, Error, MultipleInvalid, Invalid
 
 # validation error messages
 LENGTH_ERRROR = 'length must be valid, choose from {}'
 FORBIDDEN_VALUE_ERROR = 'the value is not allowed, do not choose from {}'
-ZIPCODE_LENGTHS = [5, 9]
-FORBIDDEN_STATES = ['NJ', 'CT', 'PA', 'MA', 'OR', 'ID', 'IL']
+AT_MOST_DATE_RANGE_ERROR = 'value must be at most {}'
+LOWER_THAN_DATE_RANGE_ERROR = 'value must be lower than {}'
+HIGHER_THAN_DATE_RANGE_ERROR = 'value must be higher than {}'
+AT_LEAST_DATE_RANGE_ERROR = 'value must be at least {}'
+COERCE_DATE_ERROR = 'value does not represent a valid date, the date format must follow {}'.format(DATE_FORMAT)
+
+today = date.today()
+
+
+# validation constants
+validate_with = {
+    'TODAY_LESS_21_YEARS': date(year=today.year - 21, month = today.month, day=today.day),
+    'FORBIDDEN_STATES': ['NJ', 'CT', 'PA', 'MA', 'OR', 'ID', 'IL'],
+    'ZIPCODE_LENGTHS': [5, 9],
+    'COERCE_DATE_ERROR': COERCE_DATE_ERROR,
+    'LENGTH_ERRROR': LENGTH_ERRROR,
+    'FORBIDDEN_VALUE_ERROR': FORBIDDEN_VALUE_ERROR,
+    'AT_MOST_DATE_RANGE_ERROR': AT_MOST_DATE_RANGE_ERROR,
+    'LOWER_THAN_DATE_RANGE_ERROR': LOWER_THAN_DATE_RANGE_ERROR,
+    'HIGHER_THAN_DATE_RANGE_ERROR': HIGHER_THAN_DATE_RANGE_ERROR,
+    'AT_LEAST_DATE_RANGE_ERROR': AT_LEAST_DATE_RANGE_ERROR
+}
 # parse yaml validators
 order_fields_file = open('/Users/malka/Documents/job/Lot18Code/flaskr/config/field_validators.yaml')
 from string import Template
 s = Template(order_fields_file.read())
-s = s.substitute(ZIPCODE_LENGTHS=ZIPCODE_LENGTHS)
+s = s.substitute(**validate_with)
 # use safe_load instead load
 order_fields = yaml.load(s)
 order_fields_file.close()
+order_fields_defaults = order_fields['order_fields_defaults']
+
+def get_base_error_message(error):
+    if not isinstance(error, str):
+        return ''
+    try:
+        error_msg = eval(error).split('{}')
+    except NameError:
+        return ''
+    error_msg.remove('')
+    error_msg = ''.join(error_msg)
+    return error_msg
+
+def convert_to_date(v):
+    return datetime.strptime(v, DATE_FORMAT).date()
+
+def DateRange(min=None, max=None, min_included=True, max_included=True, msg=None):
+
+    def f(v):
+        print 'checking date range', v
+        if not isinstance(v, date):
+            print 'did not find date'
+            print type(v)
+            try:
+                v = convert_to_date(v)
+            except Exception as e:
+                raise Invalid(str(e))
+
+        if min and not isinstance(min, date):
+            raise Invalid('problem converting min or max to date')
+        if max and not isinstance(max, date):
+            raise Invalid('problem converting min or max to date')
+
+
+        if min_included:
+            if min is not None and v < min:
+                raise Invalid(msg or AT_LEAST_DATE_RANGE_ERROR.format(min))
+        else:
+            if min is not None and v <= min:
+                raise Invalid(msg or HIGHER_THAN_DATE_RANGE_ERROR.format(min))
+        if max_included:
+            if max is not None and v > max:
+                raise Invalid(msg or AT_MOST_DATE_RANGE_ERROR.format(max))
+        else:
+            if max is not None and v >= max:
+                raise Invalid(msg or LOWER_THAN_DATE_RANGE_ERROR.format(max))
+       
+        return v
+    return f
 
 def ValueNotIn(container, msg=None, column_name=None):
     """
@@ -66,18 +135,182 @@ def LengthIn(container, msg=None, column_name=None):
         return value
     return validator
 
-def coerce_to_type(typ=int, column_name=None):
+
+
+# class Invalid(Error):
+#     """The data was invalid.
+
+#     :attr msg: The error message.
+#     :attr path: The path to the error, as a list of keys in the source data.
+#     :attr error_message: The actual error message that was raised, as a
+#         string.
+
+#     """
+
+#     def __init__(self, message, path=None, error_message=None, nullify=False):
+#         Error.__init__(self,  message)
+#         self.path = path or []
+#         self.error_message = error_message or message
+#         self.nullify = nullify
+
+#     @property
+#     def msg(self):
+#         return self.args[0]
+
+#     def __str__(self):
+#         path = ' @ data[%s]' % ']['.join(map(repr, self.path)) \
+#             if self.path else ''
+#         return Exception.__str__(self) + path
+
+# import voluptuous
+# voluptuous.Invalid = Invalid
+# class InvalidAndReplace(Invalid):
+
+#     def __init__(self, msg, path=None, error_message=None, nullify=False):
+#         super(InvalidAndReplace, self).__init__(str(msg), path=None, error_message=None)
+#         print 'initiating InvalidAndReplace, nullify is ', nullify
+#         self.nullify = nullify
+
+#     def __repr__(self):
+#         return 'InvalidAndReplace <nullify:(%s)>' % self.nullify
+
+
+
+
+
+
+# def All(*validators, **kwargs):
+#     """Value must pass all validators.
+
+#     The output of each validator is passed as input to the next.
+#     All validators are evaluated even if earlier ones failed.
+
+#     :param msg: Message to deliver to user if validation fails.
+#     :param kwargs: All other keyword arguments are passed to the sub-Schema constructors.
+
+#     >>> validate = Schema(All('10', Coerce(int)))
+#     >>> validate('10')
+#     10
+#     """
+#     msg = kwargs.pop('msg', None)
+#     replace_on_failure = kwargs.pop('replace_on_failure', False)
+#     schemas = [Schema(val, **kwargs) for val in validators]
+    
+#     def validate(v):
+#         global current_v
+#         current_v = v
+#         for schema in schemas:
+#             try:
+#                 current_v = schema(current_v)
+#             except Invalid as e:
+#                 yield e if msg is None else Invalid(msg)
+        
+
+#     def f(v):
+#         global current_v
+#         errors = list(validate(v))
+#         if errors:
+#             replace = False
+
+#             if v != current_v and replace_on_failure:
+#                 print 'sending kwarg to replace'
+#                 replace = True
+#             raise MultipleInvalidForField(errors, replace=replace, last_value=current_v)
+            
+#         return v
+
+#     return f
+
+# def CoerceOrNullify(typ=int, column_name=None, converter_function=None):
+#     if type(typ) == str:
+#         typ = eval(typ)
+#     if converter_function:
+#         converter_function = eval(converter_function)
+    
+#     def f(v):
+#         print 'coerce or nullify fx', v
+#         # if the value is already the correct type then just return it
+#         if isinstance(v, typ):
+#             return v
+#         # convert with the custom function if one is provided
+#         if converter_function: 
+#             try:
+#                 return converter_function(v)
+#             except Exception as e:
+#                 print 'returning none'
+#                 return None
+#         # convert by type-casting
+#         try:
+#             return typ(v)
+#         except ValueError as e:
+#             print 'returning none'
+#             return None
+#     return f
+
+# def Replace(typ=None, column_name=None, converter_function=None, nullify_on_failure=False, replacement_on_failurement=None):
+#     """Replace a value if it can not be coerced to the correct type or format."""
+#     if typ != None and type(typ) == str:
+#         typ = eval(typ)
+#     if converter_function:
+#         converter_function = eval(converter_function)
+    
+#     def return_replacement():
+#         if nullify_on_failure:
+#             return None
+#         if replacement_on_failurement:
+#             return replacement_on_failurement
+
+#     def f(v):
+#         print 'coerce or replace', v
+#         # if the value is already the correct type then just return it
+#         if typ != None and isinstance(v, typ):
+#             return v
+#         # convert with the custom function if one is provided
+#         if converter_function: 
+#             try:
+#                 return converter_function(v)
+#             except Exception as e:
+#                 return_replacement()
+#         # convert by type-casting
+#         if typ != None:
+#             try:
+#                 return typ(v)
+#             except ValueError as e:
+#                 return_replacement()
+#     return f
+
+
+
+def CoerceTo(typ=None, column_name=None, converter_function=None, msg=None):
     if type(typ) == str:
         typ = eval(typ)
-
+    if converter_function:
+        converter_function = eval(converter_function)
+    
+    # TODO: need one of typ or converte_function, else invalid schema
     def f(v):
-        try:
-            return typ(v)
-        except ValueError as e:
-            msg = 'Value: {}; Error: can not be converted to the {} type'.format(str(v), typ)
-            if column_name:
-                msg = 'Field: {}; '.format(column_name) + msg
-            raise Invalid(msg)
+        print 'coercing', v
+        # if the value is already the correct type then just return it
+        if typ and isinstance(v, typ):
+            return v
+        elif typ:
+            # convert by type-casting
+            try:
+                return typ(v)
+            except ValueError as e:
+                if not msg:
+                    msg = 'Value: {}; Error: can not be converted with the {} type or function'.format(str(v), typ or converter_function)
+                if column_name:
+                    msg = 'Field: {}; '.format(column_name) + msg
+                raise Invalid(msg)
+        elif converter_function:
+            # convert with the custom function if one is provided
+            if converter_function: 
+                try:
+                    return converter_function(v)
+                except Exception as e:
+                    raise Invalid(str(e)) # TODO
+        
     return f
 
 class Struct:
@@ -93,7 +326,10 @@ class Struct:
             self.__dict__.update({'optional_fields':{}})
         else:
             self.complete_optional_field_dictionaries(self.optional_fields)
-        
+
+        if not self.optional_fields and not self.required_fields:
+            # simplest schema type for one field
+            self.complete_optional_field_dictionaries(entries)
 
     def complete_required_field_dictionaries(self, required_field_dict):
         for field_name, field_validators in required_field_dict.items():
@@ -125,7 +361,7 @@ class Struct:
 
 
 def create_schema_from_config(config_dict):
-    schema_dict = Struct(**config_dict['order_fields'])
+    schema_dict = Struct(**config_dict)
     schema = Schema(schema_dict.schema)
     return schema
 
@@ -165,7 +401,7 @@ class Order(db.Model):
 #     'zipcode': str
 # })
 
-schema = create_schema_from_config(order_fields)
+schema = create_schema_from_config(order_fields['order_fields_validators'])
 
 class OrderImport(Resource):
     def get(self):
@@ -179,19 +415,59 @@ class OrderImport(Resource):
         for row in csvreader:
             for i, item in enumerate(row):
                 # create dictionary of column-name:field-value
-                if headers[i] == 'birthday':
-                    item = datetime.strptime(item, DATE_FORMAT).date()
                 values.update({headers[i]: item})
             # validate the row
             try:
-                schema(values)
+                values = schema(values)
+                
             except MultipleInvalid as e:
+                
                 values['valid'] = False
                 values['errors'] = []
-                for error in e.errors:
-                    values['errors'].append({'field':error.path[0], 'message':error.error_message})
+                for error in e.errors: # loops through each field in the schema that raised errors
+                    print 'in loop for error with field: '
+                    print error.path
+
+                    print error.error_message
+                    
+               
+
+                    #     values['errors'].append({'field':error.path[0] if error.path else error, 'errors':[err.error_message for err in error.errors]})
+                    # else:
+                    values['errors'].append({'field':error.path[0] if error.path else error, 'errors':error.error_message})
+                    # print error.nullify
+                    # print error.path[0]
+                    # if hasattr(error, 'nullify') and error.nullify:
+                    #     print 'trying to nullify'
+                    if error.path and len(error.path) == 1:
+                        field_name = error.path[0]
+                        if field_name in order_fields_defaults:
+                            # this is a field that requires a replacement value if type/format coercion fails
+                            print error.error_message
+                            print order_fields_defaults[field_name]['coerce_failure_msg']
+                            if order_fields_defaults[field_name]['coerce_failure_msg'] == error.error_message:
+                                # the error message corresponds to the coercion error message, update with replacement value
+                                print 'setting {} to {}'.format(field_name, order_fields_defaults[field_name]['failure_value'])
+                                values[field_name] = order_fields_defaults[field_name]['failure_value']
+                            else:
+                                # the coercion was successul but another validation requirement failed.
+                                # coerce again to avoid database Type Errors
+
+                                coerce_schema = create_schema_from_config({field_name:{'functions':{'CoerceTo':order_fields['order_fields_validators']['optional_fields'][field_name]['functions']['CoerceTo']}}})
+                                print coerce_schema.schema.keys()[0]
+                                values.update(coerce_schema({field_name:values[field_name]}))
+                                print values[field_name]
+
+# for item in validate.schema.keys():
+#     if hasattr(item, '__call__') and item.__name__ == Coerce.__name__:
+#         print item
+
+                    #     values.update({error.path[0]:None})
                 values['errors'] = str(values['errors'])
+                
             # create database record
+            print values['birthday']
+            print type(values['birthday'])
             order = Order(**values)
             db.session.add(order)
         db.session.commit()

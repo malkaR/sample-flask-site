@@ -3,3 +3,4 @@
 *.odt
 .DS_Store
 .~*
+flaskr/voluptuous

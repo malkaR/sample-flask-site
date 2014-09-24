@@ -6,11 +6,11 @@
 # every kwargs item must have a name and val
 # coerce
 # forbidden_values
-order_fields:
+order_fields_validators:
     required_fields:
         id:
             functions:
-                coerce_to_type:
+                CoerceTo:
                     kwargs:
                         typ: int
                         column_name: order_id
@@ -25,16 +25,24 @@ order_fields:
         email:
             type: str
         birthday:
-            type: date
+            functions:                
+                CoerceTo:
+                    kwargs:
+                        converter_function: convert_to_date
+                        column_name: birthday
+                        msg: $COERCE_DATE_ERROR
+                DateRange:
+                    kwargs:
+                        max: $TODAY_LESS_21_YEARS                
         zipcode:
             functions:
-                coerce_to_type:
-                    kwargs:
-                        typ: int
-                        column_name: zipcode
                 LengthIn:
                     kwargs:
                         container: $ZIPCODE_LENGTHS
+                CoerceTo:
+                    kwargs:
+                        typ: int
+                        column_name: zipcode
         state:
             type: str
             functions:
@@ -42,7 +50,14 @@ order_fields:
 
                 ValueNotIn:
                     kwargs:
-                        container: ['NJ', 'CT', 'PA', 'MA', 'OR', 'ID', 'IL']
+                        container: $FORBIDDEN_STATES
                         column_name: state
+
+order_fields_defaults:
+    birthday:
+        coerce_failure_msg: $COERCE_DATE_ERROR
+        failure_value: null
+    zipcode:
+        failure_value: null
 
 
