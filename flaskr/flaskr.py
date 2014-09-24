@@ -282,7 +282,9 @@ def CoerceTo(typ=None, column_name=None, converter_function=None, msg=None, retu
         typ = eval(typ)
     if converter_function:
         converter_function = eval(converter_function)
-    
+
+    if not msg:
+        msg = 'Can not convert value with the {} type or function'.format(typ or converter_function)
     # TODO: need one of typ or converte_function, else invalid schema
     def f(v):
         # if the value is already the correct type then just return it
@@ -296,10 +298,7 @@ def CoerceTo(typ=None, column_name=None, converter_function=None, msg=None, retu
                     return v
                 return converted_value
             except ValueError as e:
-                if not msg:
-                    msg = 'Value: {}; Error: can not be converted with the {} type or function'.format(str(v), typ or converter_function)
-                if column_name:
-                    msg = 'Field: {}; '.format(column_name) + msg
+                
                 raise Invalid(msg)
         elif converter_function:
             # convert with the custom function if one is provided
