@@ -18,12 +18,14 @@ Feature: Import Orders In Bulk
 
     Examples:
         | file_name         |  id   |       name      |                    email                   | state |  zipcode |   birthday   | valid |             errors             |
-        | OneValidOrder.csv |  2499 | Stone Dominguez |  ligula.Aliquam.erat@semperegestasurna.com |  IA   |   15938  | Feb 27, 1963 |   1   |                None              |
+        | OneValidOrder.csv |  2499 | Stone Dominguez |  ligula.Aliquam.erat@semperegestasurna.com |  IA   |   40302  | Feb 27, 1963 |   1   |                None              |
         | OneOrderInvalidBirthdayFormat.csv |  2499 | Stone Dominguez |  ligula.Aliquam.erat@semperegestasurna.com |  NY   |   80081  | None |   0   |    COERCE_DATE_ERROR   |
         | OneOrderInvalidBirthdayRange.csv |  2499 | Stone Dominguez |  ligula.Aliquam.erat@semperegestasurna.com |  NY   |   80081  | Feb 27, 1995 |   0   |     AT_MOST_DATE_RANGE_ERROR      |
-        | OneInvalidOrderState.csv |  2499 | Stone Dominguez |  ligula.Aliquam.erat@semperegestasurna.com |  NJ   |   15938  | Feb 27, 1963 |   0   |    FORBIDDEN_VALUE_ERROR   |        
-        | OneOrderInvalidZipcodeLength.csv |  2499 | Stone Dominguez |  ligula.Aliquam.erat@semperegestasurna.com |  NY   |   8440212  | Feb 27, 1963 |   0   |    LENGTH_ERRROR   |
+        | OneInvalidOrderState.csv |  2499 | Stone Dominguez |  ligula.Aliquam.erat@semperegestasurna.com |  NJ   |   40302  | Feb 27, 1963 |   0   |    FORBIDDEN_VALUE_ERROR   |        
+        | OneOrderInvalidZipcodeLength.csv |  2499 | Stone Dominguez |  ligula.Aliquam.erat@semperegestasurna.com |  NY   |   8440212  | Feb 27, 1963 |   0   |    LENGTH_CHOICE_ERROR   |
         | OneOrderInvalidZipcodeType.csv |  2499 | Stone Dominguez |  ligula.Aliquam.erat@semperegestasurna.com |  NY   |   None  | Feb 27, 1963 |   0   |    COERCE_INT_ERROR   |
-        | OneOrderInvalidZipcodeInvalidState.csv |  2499 | Stone Dominguez |  ligula.Aliquam.erat@semperegestasurna.com |  NJ   |   8959381  | Feb 27, 1963 |   0   |    FORBIDDEN_VALUE_ERROR, LENGTH_ERRROR    |
-
+        | OneOrderInvalidZipcodeInvalidState.csv |  2499 | Stone Dominguez |  ligula.Aliquam.erat@semperegestasurna.com |  NJ   |   8959381  | Feb 27, 1963 |   0   |    FORBIDDEN_VALUE_ERROR, LENGTH_CHOICE_ERROR    |
+        | OneInvalidOrderEmail.csv |  2499 | Stone Dominguez |  ligula.Aliquam.eratsemperegestasurna.com |  NY   |   40302  | Feb 27, 1963 |   0   |    INVALID_EMAIL_ERROR   |     
+        | OneInvalidOrderEmailLength.csv |  2499 | Stone Dominguez |  l@ |  NY   |   40302  | Feb 27, 1963 |   0   |    INVALID_EMAIL_ERROR, LENGTH_CHOICE_ERROR   |
+        | OneOrderInvalidZipcodeSum.csv |  2499 | Stone Dominguez |  ligula.Aliquam.erat@semperegestasurna.com |  IA   |   15938  | Feb 27, 1963 |   0   |       SUM_MAX_ERROR      |
 

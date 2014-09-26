@@ -10,6 +10,7 @@ from flask.ext.sqlalchemy import SQLAlchemy
 from datetime import datetime, date
 from functools import wraps
 import sys
+from validate_email import validate_email
 
 app = Flask(__name__)
 app.config.from_envvar('FLASKR_SETTINGS', silent=True)
@@ -24,7 +25,9 @@ from voluptuous import Schema, Required, All, Length, Range, Error, MultipleInva
 
 # validation error messages
 DATE_FORMAT = '%b %d, %Y'
-LENGTH_ERRROR = 'length must be valid, choose from {}'
+LENGTH_CHOICE_ERROR = 'length must be valid, choose from {}'
+LENGTH_RANGE_ERROR = 'length must be valide, between {} and {}'
+SUM_MAX_ERROR = 'sum of values must be no more than {}'
 FORBIDDEN_VALUE_ERROR = 'the value is not allowed, do not choose from {}'
 AT_MOST_DATE_RANGE_ERROR = 'value must be at most {}'
 LOWER_THAN_DATE_RANGE_ERROR = 'value must be lower than {}'
@@ -32,6 +35,7 @@ HIGHER_THAN_DATE_RANGE_ERROR = 'value must be higher than {}'
 AT_LEAST_DATE_RANGE_ERROR = 'value must be at least {}'
 COERCE_DATE_ERROR = 'value does not represent a valid date, the date format must follow {}'.format(DATE_FORMAT)
 COERCE_INT_ERROR = 'value does not represent an integer'
+INVALID_EMAIL_ERROR = 'email address is not valid'
 today = date.today()
 
 
@@ -40,14 +44,18 @@ validate_with = {
     'TODAY_LESS_21_YEARS': date(year=today.year - 21, month = today.month, day=today.day),
     'FORBIDDEN_STATES': ['NJ', 'CT', 'PA', 'MA', 'OR', 'ID', 'IL'],
     'ZIPCODE_LENGTHS': [5, 9],
+    # 'MAX_EMAIL_SUM': 20,
     'COERCE_DATE_ERROR': COERCE_DATE_ERROR,
-    'LENGTH_ERRROR': LENGTH_ERRROR,
+    'LENGTH_CHOICE_ERROR': LENGTH_CHOICE_ERROR,
+    'LENGTH_RANGE_ERROR': LENGTH_RANGE_ERROR,
     'FORBIDDEN_VALUE_ERROR': FORBIDDEN_VALUE_ERROR,
     'AT_MOST_DATE_RANGE_ERROR': AT_MOST_DATE_RANGE_ERROR,
     'LOWER_THAN_DATE_RANGE_ERROR': LOWER_THAN_DATE_RANGE_ERROR,
     'HIGHER_THAN_DATE_RANGE_ERROR': HIGHER_THAN_DATE_RANGE_ERROR,
     'AT_LEAST_DATE_RANGE_ERROR': AT_LEAST_DATE_RANGE_ERROR,
-    'COERCE_INT_ERROR': COERCE_INT_ERROR
+    'COERCE_INT_ERROR': COERCE_INT_ERROR,
+    'INVALID_EMAIL_ERROR': INVALID_EMAIL_ERROR,
+    'SUM_MAX_ERROR': SUM_MAX_ERROR
 }
 # parse yaml validators
 order_fields_file = open('/Users/malka/Documents/job/Lot18Code/flaskr/config/field_validators.yaml')
@@ -97,6 +105,17 @@ def DateRange(min=None, max=None, min_included=True, max_included=True, msg=None
         return v
     return f
 
+def MatchesEmailRegEx(msg=None, column_name='email'):
+    if msg == None:
+        msg = INVALID_EMAIL_ERROR
+
+    def f(v):
+        if validate_email(v):
+            return v
+        raise Invalid(msg)
+
+    return f
+
 def ValueNotIn(container, msg=None, column_name=None):
     """
     The field's value can not be one of the container items.
@@ -111,28 +130,45 @@ def ValueNotIn(container, msg=None, column_name=None):
 
     return f
 
-def LengthIn(container, msg=None, column_name=None):
-    """Validate that the length of the string or iterable representation of the value is in the collection of integers."""
-
+def LengthCustom(min=None, max=None, msg=None):
     if msg == None:
-        msg = LENGTH_ERRROR.format(container)
-        if column_name != None:
-            msg = '{} {}'.format(column_name, msg)
+        msg = LENGTH_RANGE_ERROR.format(min or 'any', max or 'any')
+
+    return Length(min=min, max=max, msg=msg)
+
+def LengthIn(container, msg=None, column_name=None):
+    """Validate that the length of the value or the string representation of the value is in the collection of integers."""
+    if msg == None:
+        msg = LENGTH_CHOICE_ERROR.format(container)
 
     def validator(value):
         try:
-            if len(iter(value)) in container:
+            if len(value) in container:
                 return value
         except TypeError:
             try:
                 if len(str(value)) in container:
                     return value
-            except TypeError:
+            except Exception:
                 pass
         raise Invalid(msg)
 
     return validator
 
+def SumMax(max_sum, msg=None, column_name=None):
+    """
+    The individual integers in the field can not sum to more than `max_sum`.
+    The field must be an integer or string that reprsents an integer.
+    """
+    if msg == None:
+        msg = SUM_MAX_ERROR.format(max_sum)
+
+    def f(v):
+        if sum(int(i) for i in str(v)) > 20:
+            raise Invalid(msg)
+        return v
+
+    return f
 
 
 def CoerceTo(typ=None, column_name=None, converter_function=None, msg=None, return_original=False):

@@ -17,5 +17,6 @@ pytz==2014.7
 six==1.8.0
 sure==1.2.7
 us==0.8.0
+validate-email==1.2
 voluptuous==0.8.5
 wsgiref==0.1.2

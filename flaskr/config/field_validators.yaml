@@ -18,12 +18,21 @@ order_fields_validators:
         name:
             type: str
             functions:
-                Length:
+                LengthCustom:
                     kwargs:
                         min: 1
+                        max: 120
+
     optional_fields:
         email:
             type: str
+            functions:
+                MatchesEmailRegEx:
+                    kwargs:
+                        msg: $INVALID_EMAIL_ERROR
+                LengthCustom:
+                    kwargs:
+                        max: 120
         birthday:
             functions:            
                 CoerceTo:
@@ -45,8 +54,12 @@ order_fields_validators:
                         msg: $COERCE_INT_ERROR
                 LengthIn:
                     kwargs:
-                        container: $ZIPCODE_LENGTHS  
-            functions_order: [CoerceTo, LengthIn]
+                        container: $ZIPCODE_LENGTHS
+                SumMax:
+                    kwargs:
+                        max_sum: 20
+                        msg: $SUM_MAX_ERROR
+            functions_order: [CoerceTo, SumMax, LengthIn]
         state:
             type: str
             functions:

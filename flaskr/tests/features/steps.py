@@ -4,8 +4,9 @@ import json
 sys.path.append(os.path.abspath(os.pardir))
 from datetime import date
 from lettuce import * 
-from flaskr import (Order, basic_resource_fields, LENGTH_ERRROR, FORBIDDEN_VALUE_ERROR, AT_MOST_DATE_RANGE_ERROR, get_base_error_message,
-        LOWER_THAN_DATE_RANGE_ERROR, HIGHER_THAN_DATE_RANGE_ERROR, AT_LEAST_DATE_RANGE_ERROR, COERCE_DATE_ERROR)
+from flaskr import (Order, basic_resource_fields, LENGTH_CHOICE_ERROR, FORBIDDEN_VALUE_ERROR, AT_MOST_DATE_RANGE_ERROR, get_base_error_message,
+        LOWER_THAN_DATE_RANGE_ERROR, HIGHER_THAN_DATE_RANGE_ERROR, AT_LEAST_DATE_RANGE_ERROR, COERCE_DATE_ERROR, LENGTH_RANGE_ERROR,
+        SUM_MAX_ERROR)
 from terrain import init_db
 
 # --------- Steps to prepare data fixtures --------- #
@@ -108,6 +109,8 @@ def check_order_errors(step, expected):
             error_msg = get_base_error_message(error)
             assert error_msg in order.errors, \
                 "Got %s, missing %s" % (order.errors, error_msg)
+        assert len(expected) != len(order.errors), \
+            "Got %s, expected %s" % (order.errors, expected)
 
 
 # --------- Steps to use when multiple records exist --------- #
