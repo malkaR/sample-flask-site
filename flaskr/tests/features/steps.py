@@ -70,6 +70,8 @@ def check_order_state(step, expected):
 
 @step('I see the order zipcode (\w*) present in the database')
 def check_order_zipcode(step, expected):
+    if expected == 'None':
+        expected = None
     order = world.db.session.query(Order).first()
     assert order.zipcode == expected, \
         "Got %s" % order.zipcode
@@ -77,8 +79,13 @@ def check_order_zipcode(step, expected):
 @step('I see the order birthday (.*) present in the database')
 def check_order_birthday(step, expected):
     order = world.db.session.query(Order).first()
-    assert date.strftime(order.birthday, '%b %d, %Y') == expected, \
-        "Got %s" % order.birthday  
+    if expected == 'None':
+        expected = None
+        assert order.birthday == expected, \
+            "Got %s" % order.birthday 
+    else:
+        assert date.strftime(order.birthday, '%b %d, %Y') == expected, \
+            "Got %s" % order.birthday  
 
 @step('I see the order validity (.*) present in the database')
 def check_order_validity(step, expected):

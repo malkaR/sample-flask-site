@@ -13,6 +13,7 @@ def set_up():
     Create a new empty database.
     """
     os.environ['FLASKR_SETTINGS'] = 'settings_test.py'
+    flaskr.app.config.from_envvar('FLASKR_SETTINGS', silent=True)
     init_db()
     world.db = flaskr.db
     world.app = flaskr.app.test_client()

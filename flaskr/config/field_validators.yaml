@@ -25,32 +25,31 @@ order_fields_validators:
         email:
             type: str
         birthday:
-            functions:                
+            functions:            
                 CoerceTo:
                     kwargs:
+                        typ: date
                         converter_function: convert_to_date
                         column_name: birthday
                         msg: $COERCE_DATE_ERROR
                 DateRange:
                     kwargs:
-                        max: $TODAY_LESS_21_YEARS                
+                        max: $TODAY_LESS_21_YEARS
+            functions_order: [CoerceTo, DateRange]
         zipcode:
             functions:
                 CoerceTo:
                     kwargs:
                         typ: int
                         column_name: zipcode
-                        return_original: true
                         msg: $COERCE_INT_ERROR
                 LengthIn:
                     kwargs:
-                        container: $ZIPCODE_LENGTHS 
-                         
+                        container: $ZIPCODE_LENGTHS  
+            functions_order: [CoerceTo, LengthIn]
         state:
             type: str
             functions:
-                # Upper:
-
                 ValueNotIn:
                     kwargs:
                         container: $FORBIDDEN_STATES
