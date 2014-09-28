@@ -1,8 +1,8 @@
-Feature: Import Orders In Bulk
+Feature: Import One Order
     
     Scenario Outline: Import One Order and Validate It
         Given I delete and recreate the database
-        And I read the contents of a csv file containing an order from <file_name>
+        And I read the contents of a csv file containing orders from <file_name>
         When I do an http put request with the file string data
         Then I see the order id <id> present in the database
         Then I see the order name <name> present in the database

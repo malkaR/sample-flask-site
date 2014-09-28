@@ -9,14 +9,16 @@ from flaskr import (Order, basic_resource_fields, LENGTH_CHOICE_ERROR, FORBIDDEN
         SUM_MAX_ERROR)
 from terrain import init_db
 
+field_types = 'name email state zipcode birthday valid errors'.split()
+
 # --------- Steps to prepare data fixtures --------- #
 
 @step('I delete and recreate the database')
 def tear_down_and_set_up(step):
     init_db()
 
-@step('I read the contents of a csv file containing an order from (\w+.csv)')
-def have_the_data_file(step, file_name):
+@step('I read the contents of a csv file containing orders from (\w+.csv)')
+def read_the_data_file(step, file_name):
     world.file_data = open('data/' + file_name, 'rb').read()
 
 # --------- Steps to verify basic request/response behaviors --------- #
@@ -42,66 +44,111 @@ def check_content_type(step, expected):
     assert world.response.headers['content-type'] == expected, \
         "Got %s" % world.response.headers['content-type']
 
+# --------- Steps to use when multiple records exist --------- #
+
+@step('I see the list of order ids (.*) present in the database')
+def check_list_order_ids(step, expected):
+    expected = expected[1:-1].split(';')
+    for order_id in expected:
+        check_order_id(step, order_id)
+
+@step('for each order in the (.*) I verify the name fields in (.*) are correct')
+def check_list_order_name(step, expected_ids, expected_values):
+    check_list_order_fields(step, expected_ids, 'name', expected_values)
+
+@step('for each order in the (.*) I verify the email fields in (.*) are correct')
+def check_list_order_email(step, expected_ids, expected_values):
+    check_list_order_fields(step, expected_ids, 'email', expected_values)
+
+@step('for each order in the (.*) I verify the state fields in (.*) are correct')
+def check_list_order_state(step, expected_ids, expected_values):
+    check_list_order_fields(step, expected_ids, 'state', expected_values)
+
+@step('for each order in the (.*) I verify the zipcode fields in (.*) are correct')
+def check_list_order_zipcode(step, expected_ids, expected_values):
+    check_list_order_fields(step, expected_ids, 'zipcode', expected_values)
+
+@step('for each order in the (.*) I verify the birthday fields in (.*) are correct')
+def check_list_order_birthday(step, expected_ids, expected_values):
+    check_list_order_fields(step, expected_ids, 'birthday', expected_values)
+
+@step('for each order in the (.*) I verify the valid fields in (.*) are correct')
+def check_list_order_valid(step, expected_ids, expected_values):
+    check_list_order_fields(step, expected_ids, 'valid', expected_values)
+
+@step('for each order in the (.*) I verify the errors fields in (.*) are correct')
+def check_list_order_errors(step, expected_ids, expected_values):
+    check_list_order_fields(step, expected_ids, 'errors', expected_values)
+
+def check_list_order_fields(step, expected_ids, field_type, expected_values):
+    if field_type not in field_types:
+        assert False, 'The test is not set up correctly. The field %s is not valid' % field_type
+    expected_ids = [int(i) for i in expected_ids[1:-1].split(';')]
+    expected_values = [val.strip(' ') for val in expected_values[1:-1].split(';')]
+    for i, order_id in enumerate(expected_ids):
+        order_obj = world.db.session.query(Order).filter_by(id=order_id).first()
+        eval('check_order_%s' % field_type)(step, expected_values[i], order_obj)
+
 # --------- Steps to use when one record exists --------- #
 
 @step('I see the order id (\d+) present in the database')
 def check_order_id(step, expected):
     expected = int(expected)
-    order = world.db.session.query(Order).first()
+    order = world.db.session.query(Order).filter_by(id=expected).first()
     assert order.id == expected, \
-        "Got %d" % order.id
+        "Got order id %d, not found in database" % order.id
 
 @step('I see the order name ([\w\s]+) present in the database')
-def check_order_name(step, expected):
-    order = world.db.session.query(Order).first()
+def check_order_name(step, expected, order=None):
+    order = order or world.db.session.query(Order).first()
     assert order.name == expected, \
-        "Got %s" % order.name
+        "Got %s, expected %s" % (order.name, expected)
 
 @step('I see the order email (.*) present in the database')
-def check_order_email(step, expected):
-    order = world.db.session.query(Order).first()
+def check_order_email(step, expected, order=None):
+    order = order or world.db.session.query(Order).first()
     assert order.email == expected, \
-        "Got %s" % order.email
+        "Got %s, expected %s" % (order.email, expected)
 
 @step('I see the order state (\w{2}) present in the database')
-def check_order_state(step, expected):
-    order = world.db.session.query(Order).first()
+def check_order_state(step, expected, order=None):
+    order = order or world.db.session.query(Order).first()
     assert order.state == expected, \
-        "Got %s" % order.state
+        "Got %s, expected %s" % (order.state, expected)
 
 @step('I see the order zipcode (\w*) present in the database')
-def check_order_zipcode(step, expected):
+def check_order_zipcode(step, expected, order=None):
     if expected == 'None':
         expected = None
-    order = world.db.session.query(Order).first()
+    order = order or world.db.session.query(Order).first()
     assert order.zipcode == expected, \
-        "Got %s" % order.zipcode
+        "Got %s, expected %s" % (order.zipcode, expected)
 
 @step('I see the order birthday (.*) present in the database')
-def check_order_birthday(step, expected):
-    order = world.db.session.query(Order).first()
+def check_order_birthday(step, expected, order=None):
+    order = order or world.db.session.query(Order).first()
     if expected == 'None':
         expected = None
         assert order.birthday == expected, \
-            "Got %s" % order.birthday 
+            "Got %s, expected %s" % (order.birthday, expected)
     else:
         assert date.strftime(order.birthday, '%b %d, %Y') == expected, \
-            "Got %s" % order.birthday  
+            "Got %s, expected %s" % (order.birthday, expected) 
 
 @step('I see the order validity (.*) present in the database')
-def check_order_validity(step, expected):
+def check_order_valid(step, expected, order=None):
     expected = bool(int(expected))
-    order = world.db.session.query(Order).first()
+    order = order or world.db.session.query(Order).first()
     assert order.valid == expected, \
         "Got %s, errors found %s" % (order.valid, order.errors)
 
 @step('I see the order validation errors (.*) present in the database')
-def check_order_errors(step, expected):
-    order = world.db.session.query(Order).first()
+def check_order_errors(step, expected, order=None):
+    order = order or world.db.session.query(Order).first()
     if expected == 'None':
         expected = None
         assert order.errors == expected, \
-            "Got %s" % order.errors  
+            "Got %s, expected %s" % (order.errors, expected)  
     else:
         expected = expected.split(',')
         order_errors = list(order.errors)
