@@ -30,6 +30,8 @@ Feature: Import One Order
         | OneOrderInvalidZipcodeSum.csv |  2499 | Stone Dominguez |  ligula.Aliquam.erat@semperegestasurna.com |  IA   |   15938  | Feb 27, 1963 |   0   |       SUM_MAX_ERROR      | 
         | OneValidOrderSameHeadersDifferentOrder.csv |  2499 | Stone Dominguez |  ligula.Aliquam.erat@semperegestasurna.com |  IA   |   40302  | Feb 27, 1963 |   1   |                None              |
         | OneValidOrderHeadersMissingBirthday.csv |  2499 | Stone Dominguez |  ligula.Aliquam.erat@semperegestasurna.com |  IA   |   40302  | None |   1   |                None              |
+        | OneValidOrderNewHeaderField.csv |  2499 | Stone Dominguez |  ligula.Aliquam.erat@semperegestasurna.com |  IA   |   40302  | Feb 27, 1963 |   1   |                None              |
+        
         
         
 
