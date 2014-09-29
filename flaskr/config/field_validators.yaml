@@ -55,11 +55,12 @@ order_fields_validators:
                 LengthIn:
                     kwargs:
                         container: $ZIPCODE_LENGTHS
+                        msg: $LENGTH_CHOICE_ERROR_ZIPCODE
                 SumMax:
                     kwargs:
                         max_sum: 20
                         msg: $SUM_MAX_ERROR
-            functions_order: [CoerceTo, SumMax, LengthIn]
+            functions_order: [CoerceTo, LengthIn, SumMax]
         state:
             type: str
             functions:
@@ -67,6 +68,27 @@ order_fields_validators:
                     kwargs:
                         container: $FORBIDDEN_STATES
                         column_name: state
+    dependent_fields:
+        qualifier: Any
+        msg: $NY_EMAIL_ERROR
+        Or:
+            And:
+                state:
+                    value: NY
+                email:
+                    functions:
+                        EndsWith:
+                            kwargs:
+                                ending: .net
+                                allowed: false
+            state:
+                functions:
+                    In:
+                        kwargs:
+                            container: $STATES_LESS_NY
+
+
+
 
 order_fields_defaults:
     birthday:

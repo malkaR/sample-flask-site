@@ -5,8 +5,8 @@ sys.path.append(os.path.abspath(os.pardir))
 from datetime import date
 from lettuce import * 
 from flaskr import (Order, basic_resource_fields, LENGTH_CHOICE_ERROR, FORBIDDEN_VALUE_ERROR, AT_MOST_DATE_RANGE_ERROR, get_base_error_message,
-        LOWER_THAN_DATE_RANGE_ERROR, HIGHER_THAN_DATE_RANGE_ERROR, AT_LEAST_DATE_RANGE_ERROR, COERCE_DATE_ERROR, LENGTH_RANGE_ERROR,
-        SUM_MAX_ERROR)
+        LOWER_THAN_DATE_RANGE_ERROR, HIGHER_THAN_DATE_RANGE_ERROR, AT_LEAST_DATE_RANGE_ERROR, COERCE_DATE_ERROR, LENGTH_RANGE_ERROR, NY_EMAIL_ERROR,
+        SUM_MAX_ERROR, LENGTH_CHOICE_ERROR_ZIPCODE)
 from terrain import init_db
 
 field_types = 'name email state zipcode birthday valid errors'.split()
@@ -153,7 +153,9 @@ def check_order_errors(step, expected, order=None):
         expected = expected.split(',')
         order_errors = list(order.errors)
         for error in expected:
+            print error
             error_msg = get_base_error_message(error)
+            print error_msg
             assert error_msg in order.errors, \
                 "Got %s, missing %s" % (order.errors, error_msg)
         assert len(expected) != len(order.errors), \

@@ -17,11 +17,11 @@ app.config.from_envvar('FLASKR_SETTINGS', silent=True)
 api = Api(app)
 db = SQLAlchemy(app)
 US_STATES = [state.abbr for state in us.states.STATES]
-# US_STATES_ICASE = US_STATES + [state.lower() for state in US_STATES]
+STATES_LESS_NY = [str(state.abbr) for state in us.states.STATES if state.abbr != 'NY']
 
 
 sys.path.append(os.path.abspath(os.pardir))
-from voluptuous import Schema, Required, All, Length, Range, Error, MultipleInvalid, Invalid
+from voluptuous import Schema, Required, All, Length, Range, Error, MultipleInvalid, Invalid, Any, Match, In
 
 # validation error messages
 DATE_FORMAT = '%b %d, %Y'
@@ -36,14 +36,18 @@ AT_LEAST_DATE_RANGE_ERROR = 'value must be at least {}'
 COERCE_DATE_ERROR = 'value does not represent a valid date, the date format must follow {}'.format(DATE_FORMAT)
 COERCE_INT_ERROR = 'value does not represent an integer'
 INVALID_EMAIL_ERROR = 'email address is not valid'
+NY_EMAIL_ERROR = 'NY email address can not belong to a .net domain'
+MISSING_ENDING_ERROR = 'the value must end with {}'
+UNALLOWED_ENDING_ERROR = 'the value can not end with {}'
 today = date.today()
-
-
+ZIPCODE_LENGTHS = [5, 9]
+LENGTH_CHOICE_ERROR_ZIPCODE = LENGTH_CHOICE_ERROR.format(ZIPCODE_LENGTHS)
 # validation constants
 validate_with = {
     'TODAY_LESS_21_YEARS': date(year=today.year - 21, month = today.month, day=today.day),
     'FORBIDDEN_STATES': ['NJ', 'CT', 'PA', 'MA', 'OR', 'ID', 'IL'],
-    'ZIPCODE_LENGTHS': [5, 9],
+    'ZIPCODE_LENGTHS': ZIPCODE_LENGTHS,
+    'LENGTH_CHOICE_ERROR_ZIPCODE': LENGTH_CHOICE_ERROR_ZIPCODE,
     # 'MAX_EMAIL_SUM': 20,
     'COERCE_DATE_ERROR': COERCE_DATE_ERROR,
     'LENGTH_CHOICE_ERROR': LENGTH_CHOICE_ERROR,
@@ -55,7 +59,9 @@ validate_with = {
     'AT_LEAST_DATE_RANGE_ERROR': AT_LEAST_DATE_RANGE_ERROR,
     'COERCE_INT_ERROR': COERCE_INT_ERROR,
     'INVALID_EMAIL_ERROR': INVALID_EMAIL_ERROR,
-    'SUM_MAX_ERROR': SUM_MAX_ERROR
+    'SUM_MAX_ERROR': SUM_MAX_ERROR,
+    'STATES_LESS_NY': STATES_LESS_NY,
+    'NY_EMAIL_ERROR': NY_EMAIL_ERROR
 }
 # parse yaml validators
 order_fields_file = open('/Users/malka/Documents/job/Lot18Code/flaskr/config/field_validators.yaml')
@@ -68,13 +74,16 @@ order_fields_file.close()
 order_fields_defaults = order_fields['order_fields_defaults']
 
 def get_base_error_message(error):
-    if not isinstance(error, str):
-        return ''
+    if not isinstance(error, unicode):
+        return None
     try:
         error_msg = eval(error).split('{}')
     except NameError:
-        return ''
-    error_msg.remove('')
+        return None
+    try:
+        error_msg.remove('')
+    except ValueError:
+        pass
     error_msg = ''.join(error_msg)
     return error_msg
 
@@ -115,6 +124,23 @@ def MatchesEmailRegEx(msg=None, column_name='email'):
         raise Invalid(msg)
 
     return f
+
+def EndsWith(ending, allowed=True, msg=None):
+
+    if msg == None:
+        if allowed:
+            msg = MISSING_ENDING_ERROR.format(ending)
+        else:
+            msg = UNALLOWED_ENDING_ERROR.format(ending)
+
+    def f(v):
+        if (v[-len(ending):] == ending and allowed) or (v[-len(ending):] != ending and not allowed):
+            return v
+        raise Invalid(msg)
+
+    return f
+
+
 
 def ValueNotIn(container, msg=None, column_name=None):
     """
@@ -210,6 +236,8 @@ def CoerceTo(typ=None, column_name=None, converter_function=None, msg=None, retu
 class Struct:
     def __init__(self, **entries):
         self.schema = {}
+        self.dependent_schema = {}
+        self.args = []
         self.__dict__.update(entries)
         if not hasattr(self, 'required_fields'):
             self.__dict__.update({'required_fields':{}})
@@ -221,50 +249,108 @@ class Struct:
         else:
             self.complete_optional_field_dictionaries(self.optional_fields)
 
+        if not hasattr(self, 'dependent_fields'):
+            self.__dict__.update({'dependent_fields': {}})
+        else:
+            self.complete_dependent_fields_dictionaries(self.dependent_fields)
+
         if not self.optional_fields and not self.required_fields:
             # simplest schema type for one field
             self.complete_optional_field_dictionaries(entries)
 
+
+
     def complete_required_field_dictionaries(self, required_field_dict):
         for field_name, field_validators in required_field_dict.items():
-            self.schema[Required(field_name)] = self.get_field_validators(field_validators)
+            self.schema[Required(field_name)] = self.create_schema_from_args(self.get_field_validators(field_validators))
 
     def complete_optional_field_dictionaries(self, optional_field_dict):
         for field_name, field_validators in optional_field_dict.items():
-            self.schema[field_name] = self.get_field_validators(field_validators)
-    
-    def get_field_validators(self, field_validators):
-            args = []
-            if 'type' in field_validators:
-                args.append(eval(field_validators['type']))
-            if 'functions' in field_validators:
-                if 'functions_order' in field_validators:
-                    for function_name in field_validators['functions_order']:
-                        function_args = field_validators['functions'][function_name]
-                        args.append(eval(function_name)(*tuple(function_args.get('args', [])), **function_args.get('kwargs', {})))
-                else:
-                    for function_name, function_args in field_validators['functions'].items():
+            self.schema[field_name] = self.create_schema_from_args(self.get_field_validators(field_validators))
 
-                    
-                    # if type(function_name) == str:
-                    #     args.append(eval(function_name)())
-                    # else:
-                        args.append(eval(function_name)(*tuple(function_args.get('args', [])), **function_args.get('kwargs', {})))
-            if len(args) > 1:
-                return All(*tuple(args))
-            return args[0]
+    def complete_dependent_fields_dictionaries(self, dependent_fields_dict):
+        qualifier = eval(dependent_fields_dict['qualifier'])
+        msg = dependent_fields_dict['msg'] if 'msg' in dependent_fields_dict else None
+        and_dictionary = {}
+        or_list = []
+
+        def evaluate_or(or_dict):
+            or_field_schema = {}
+            if 'And' in or_dict:
+                or_list.append(evaluate_and(or_dict['And']))
+            for item in or_dict:
+                if item not in ['Or', 'And']:
+                    or_field_schema[item] = self.get_field_validators(or_dict[item])[0]
+            or_list.append(or_field_schema)
+            return or_list
+
+        def evaluate_and(and_dict):
+            and_field_schema = {}
+            if 'Or' in and_dict:
+                and_dictionary.update(evaluate_or(and_dict['Or']))
+        
+            for item in and_dict:
+                if item not in ['Or', 'And']:
+                    and_field_schema[item] = self.get_field_validators(and_dict[item])[0]
+            and_dictionary.update(and_field_schema)
+            return and_dictionary
+
+
+        top_level_args = top_level_dict = None
+        top_level_fields = {}
+        if 'Or' in dependent_fields_dict:
+            top_level_args = evaluate_or(dependent_fields_dict['Or'])
+                  
+
+        elif 'And' in dependent_fields_dict:
+            top_level_dict = evaluate_and(dependent_fields_dict['And'])
+
+        for item in dependent_fields_dict:
+            if item not in ['Or', 'And', 'qualifier', 'msg']:
+                top_level_fields[item] = self.get_field_validators(dependent_fields_dict[item])[0]
+
+        if top_level_args:
+            # top level is Or
+            self.dependent_schema = self.create_schema_from_args(top_level_args, qualifier=qualifier, msg=msg, extra=True)
+        elif top_level_dict:
+            self.dependent_schema = self.create_schema_from_args([top_level_dict], qualifier=qualifier, msg=msg, extra=True)
+            
+    def get_field_validators(self, field_validators):
+        args = []
+        if 'type' in field_validators:
+            args.append(eval(field_validators['type']))
+        if 'value' in field_validators:
+            args.append(field_validators['value'])
+        if 'functions' in field_validators:
+            if 'functions_order' in field_validators:
+                for function_name in field_validators['functions_order']:
+                    function_args = field_validators['functions'][function_name]
+                    args.append(eval(function_name)(*tuple(function_args.get('args', [])), **function_args.get('kwargs', {})))
+            else:
+                for function_name, function_args in field_validators['functions'].items():
+                    args.append(eval(function_name)(*tuple(function_args.get('args', [])), **function_args.get('kwargs', {})))
+        return args
+            
+    def create_schema_from_args(self, args, qualifier=All, **kwargs):
+        if len(args) > 1:
+            return qualifier(*tuple(args), **kwargs)
+        return args[0]
     
     def get_schema(self):
         return self.schema
+
+    def get_dependent_schema(self):
+        return self.dependent_schema
 
     def __repr__(self):
         return str(self.__dict__)
 
 
-def create_schema_from_config(config_dict):
+def create_schema_from_config(config_dict, simple=True):
     schema_dict = Struct(**config_dict)
-    schema = Schema(schema_dict.schema)
-    return schema
+    if simple:
+        return Schema(schema_dict.get_schema())
+    return [Schema(schema_dict.get_schema(), extra=True), Schema(schema_dict.get_dependent_schema())]
 
 
 # Database Model
@@ -291,7 +377,7 @@ class Order(db.Model):
 # Order validation 
 
 
-schema = create_schema_from_config(order_fields['order_fields_validators'])
+schema, dependent_schema = create_schema_from_config(order_fields['order_fields_validators'], simple=False)
 
 class OrderImport(Resource):
     def get(self):
@@ -302,15 +388,17 @@ class OrderImport(Resource):
         csvreader = csv.reader(lines, delimiter='|')
         headers = csvreader.next()
         values = {}
+        values['errors'] = []
         for row in csvreader:
             for i, item in enumerate(row):
                 # create dictionary of column-name:field-value
                 values.update({headers[i]: item})
+
             # validate the row
             try:
                 values = schema(values)
             except MultipleInvalid as e:
-                values['errors'] = []
+                
                 # errors were found, loop through keys to get the correct value and the errors for individual fields
                 for field_name in schema.schema.keys():
 
@@ -333,13 +421,16 @@ class OrderImport(Resource):
                         except MultipleInvalid as e:
 
                 
-                
+                            
                             values['valid'] = False
                             
                             for error in e.errors: # loops through each field in the schema that raised errors
-                   
-                                values['errors'].append({'field':field_name, 'errors':error.error_message})
-                   
+                        
+                                if values['errors']:
+                                    values['errors'].append({'field':field_name, 'errors':error.error_message})
+                                else:
+                                    values['errors'] = [{'field':field_name, 'errors':error.error_message}]
+
                                 if error.path and len(error.path) == 1:
                                     
                                     if field_name in order_fields_defaults:
@@ -356,9 +447,20 @@ class OrderImport(Resource):
                     else:
                         pass
                         # field name not in schema at all
-
+            if dependent_schema:
+                try:
+                    dependent_schema(values)
+                except MultipleInvalid as e:
+                    values['valid'] = False
+                    values['errors'] = list(values['errors'])
+                    for error in e.errors:
+                        values['errors'].append({'field':'multiple fields', 'errors':error.error_message})
                     #     values.update({error.path[0]:None})
+            
+            if values['errors']:    
                 values['errors'] = str(values['errors'])
+            else:
+                values['errors'] = None
                 
             # create database record
             order = Order(**values)
