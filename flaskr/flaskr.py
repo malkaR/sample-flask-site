@@ -523,9 +523,9 @@ class FullOrder(Resource):
         return marshal(db.session.query(Order).filter_by(id=order_id).first(), full_resource_fields)
 
 # Routes
-api.add_resource(OrderImport, '/orders/import')
-api.add_resource(Orders, '/orders')
-api.add_resource(FullOrder, '/orders/<string:order_id>')
+api.add_resource(OrderImport, '/orders/import/')
+api.add_resource(Orders, '/orders/')
+api.add_resource(FullOrder, '/orders/<string:order_id>/')
 
     
 
