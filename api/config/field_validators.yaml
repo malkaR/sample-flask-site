@@ -58,8 +58,7 @@ order_fields_validators:
                         msg: $LENGTH_CHOICE_ERROR_ZIPCODE
                 SumMax:
                     kwargs:
-                        max_sum: 20
-                        msg: $SUM_MAX_ERROR
+                        max_sum: $MAX_ZIPCODE_SUM
             functions_order: [CoerceTo, LengthIn, SumMax]
         state:
             type: str

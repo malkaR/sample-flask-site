@@ -1,12 +1,16 @@
 import os
 import sys
 import json
-sys.path.append(os.path.abspath(os.pardir))
+
+
+sys.path.append('/Users/malka/Documents/job/Lot18Code/')
+
 from datetime import date
 from lettuce import * 
-from flaskr import (Order, basic_resource_fields, LENGTH_CHOICE_ERROR, FORBIDDEN_VALUE_ERROR, AT_MOST_DATE_RANGE_ERROR, get_base_error_message,
-        LOWER_THAN_DATE_RANGE_ERROR, HIGHER_THAN_DATE_RANGE_ERROR, AT_LEAST_DATE_RANGE_ERROR, COERCE_DATE_ERROR, LENGTH_RANGE_ERROR, NY_EMAIL_ERROR,
-        SUM_MAX_ERROR, LENGTH_CHOICE_ERROR_ZIPCODE)
+from util import get_base_error_message
+from api.config.validation_constants import *
+from api.models import Order
+from api.resources import basic_resource_fields
 from terrain import init_db
 
 field_types = 'name email state zipcode birthday valid errors'.split()
@@ -19,7 +23,7 @@ def tear_down_and_set_up(step):
 
 @step('I read the contents of a csv file containing orders from (\w+.csv)')
 def read_the_data_file(step, file_name):
-    world.file_data = open('data/' + file_name, 'rb').read()
+    world.file_data = open('tests/data/' + file_name, 'rb').read()
 
 # --------- Steps to verify basic request/response behaviors --------- #
 
@@ -151,15 +155,15 @@ def check_order_errors(step, expected, order=None):
             "Got %s, expected %s" % (order.errors, expected)  
     else:
         expected = expected.split(',')
-        order_errors = list(order.errors)
+        order_errors = json.loads(order.errors)
+        
+        all_error_messages = ' '.join([er['errors'] for er in order_errors])
         for error in expected:
-            print error
             error_msg = get_base_error_message(error)
-            print error_msg
-            assert error_msg in order.errors, \
+            assert error_msg in all_error_messages, \
                 "Got %s, missing %s" % (order.errors, error_msg)
-        assert len(expected) != len(order.errors), \
-            "Got %s, expected %s" % (order.errors, expected)
+        assert len(expected) == len(order_errors), \
+            "Got %d in %s, expected %d in %s" % (len(order_errors), order.errors, len(expected), expected)
 
 
 # --------- Steps to use when multiple records exist --------- #
