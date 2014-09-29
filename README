@@ -1,0 +1,7 @@
+To quick-start the project:
+create a virtual environment, call it '.env' and install the requirements.
+run these three scripts:
+reset_db.sh - this creates the sqlite database and table
+run_app.sh - this runs the flaskr.py file in the background
+insert_data.sh - this inserts three sample orders
+View the orders in the browser at http://127.0.0.1:5000/orders/
