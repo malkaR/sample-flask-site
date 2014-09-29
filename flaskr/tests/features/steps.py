@@ -25,13 +25,13 @@ def read_the_data_file(step, file_name):
 
 @step('I do an http put request with the file string data')
 def do_an_http_put_request(step):
-    world.response = world.app.put('/orders/import', data=dict(
+    world.response = world.app.put('/orders/import/', data=dict(
         data=world.file_data
     )) 
 
 @step('I do an http get request for all the orders in the database')
 def do_an_http_get_request(step):
-    world.response = world.app.get('/orders')  
+    world.response = world.app.get('/orders/')  
     
 @step('I receive a successful status code of (\d+)')
 def check_status_code(step, expected):
