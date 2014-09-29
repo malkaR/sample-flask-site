@@ -21,8 +21,7 @@ Feature: Import Orders In Bulk
         | TwoValidOrdersSamePrimaryKey.csv |  [3887]  | [Davis Walters] |  [euismod@sit.edu]   |   [KS]    |   [67102]   |  [Mar 21, 1941]  |  [1]    |   [None]   | 
         | TwoOrdersSamePrimaryKeyFirstInvalidSecondValid.csv |  [3887]  | [Stone Dominguez] |  [ligula.Aliquam.erat@semperegestasurna.com]   |   [NY]    |   [13234]   |  [Feb 27, 1963]  |  [1]    |   [None]   | 
         | TwoOrdersSamePrimaryKeyFirstValidSecondInvalid.csv |  [3887]  | [Stone Dominguez] |  [ligula.Aliquam.erat@semperegestasurna.net]   |   [NY]    |   [13234]   |  [Feb 27, 1963]  |  [0]    |   [NY_EMAIL_ERROR]   | 
-
-
+        | TwoInvalidOrders.csv |  [2499; 2489]  | [Stone Dominguez; Stone Dominguez] |  [ligula.Aliquam.erat@semperegestasurna.com; ligula.Aliquam.erat@semperegestasurna.com]   |   [NJ; NJ]    |   [40302; 8959381]   |  [Feb 27, 1963; Feb 27, 1963]  |  [0; 0]    |   [FORBIDDEN_VALUE_ERROR; FORBIDDEN_VALUE_ERROR, LENGTH_CHOICE_ERROR]   | 
 
 
 
