@@ -1,11 +1,6 @@
 # fields and their validators
-# a validator can be a type, a requred value, a list of forbidden values, or any other custom function
-# every field can have a type, functions
-# every function can have an args list, kwargs list
-# the args and kwargs list must be numbered: one, two, three ...
-# every kwargs item must have a name and val
-# coerce
-# forbidden_values
+# see documentation of voluptuous at https://pypi.python.org/pypi/voluptuous
+# see documentation of the format and acceptable config values in validation/formatter.py
 order_fields_validators:
     required_fields:
         id:
@@ -85,10 +80,6 @@ order_fields_validators:
                     In:
                         kwargs:
                             container: $STATES_LESS_NY
-
-
-
-
 order_fields_defaults:
     birthday:
         coerce_failure_msg: $COERCE_DATE_ERROR

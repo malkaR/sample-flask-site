@@ -2,10 +2,12 @@ import os
 import sqlite3
 import sys
 from contextlib import closing
+
+from lettuce import *
+
 sys.path.append(os.path.abspath(os.pardir))
 import flaskr
-from lettuce import *
-from flask.ext.sqlalchemy import SQLAlchemy
+
 
 @before.all
 def set_up():
@@ -28,8 +30,8 @@ def tear_down(total):
     except OSError:
         pass
 
-# Test Set Up Helper functions
 
+# Test Set Up Helper functions
 def connect_db():
     return sqlite3.connect(flaskr.app.config['DATABASE'])
 

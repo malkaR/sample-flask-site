@@ -11,9 +11,11 @@ Feature: Retrieve All The Orders
         Then each item in the results list contains the expected resource fields
         Then each of the result items's values match the database record's values
         
-         
 
     Examples:
-        | file_name         |   number   |
-        | OneValidOrder.csv |    1   |
-        | OneInvalidOrderState.csv |  1   |
+        | file_name                | number |
+        | OneValidOrder.csv        |    1   |
+        | OneInvalidOrderState.csv |    1   |
+        | TwoValidOrders.csv       |    2   |
+        | TwoInvalidOrders.csv     |    2   |
+        | TwoValidOrdersSamePrimaryKey.csv     |    1   |

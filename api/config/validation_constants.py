@@ -1,8 +1,7 @@
 import us
 from datetime import date, datetime
 
-# allowed, required, or forbidden values
-
+# allowed, required, or forbidden values and formats
 US_STATES = [state.abbr for state in us.states.STATES]
 STATES_LESS_NY = [str(state.abbr) for state in us.states.STATES if state.abbr != 'NY']
 DATE_FORMAT = '%b %d, %Y'

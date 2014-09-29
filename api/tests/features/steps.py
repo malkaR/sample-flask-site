@@ -91,7 +91,7 @@ def check_list_order_fields(step, expected_ids, field_type, expected_values):
         order_obj = world.db.session.query(Order).filter_by(id=order_id).first()
         eval('check_order_%s' % field_type)(step, expected_values[i], order_obj)
 
-# --------- Steps to use when one record exists --------- #
+# --------- Steps to use to test one record --------- #
 
 @step('I see the order id (\d+) present in the database')
 def check_order_id(step, expected):
@@ -164,7 +164,7 @@ def check_order_errors(step, expected, order=None):
             "Got %d in %s, expected %d in %s" % (len(order_errors), order.errors, len(expected), expected)
 
 
-# --------- Steps to use when multiple records exist --------- #
+# --------- Steps to use when retreiving the orders --------- #
 
 @step('the results list in the response contains (\d+) items')
 def check_result_length(step, expected):
