@@ -27,7 +27,11 @@ Feature: Import One Order
         | OneOrderInvalidZipcodeType.csv |  2499 | Stone Dominguez |  ligula.Aliquam.erat@semperegestasurna.com |  NY   |   None  | Feb 27, 1963 |   0   |    COERCE_INT_ERROR   |
         | OneOrderInvalidZipcodeInvalidState.csv |  2499 | Stone Dominguez |  ligula.Aliquam.erat@semperegestasurna.com |  NJ   |   8959381  | Feb 27, 1963 |   0   |    FORBIDDEN_VALUE_ERROR, LENGTH_CHOICE_ERROR    |
         | OneInvalidOrderEmail.csv |  2499 | Stone Dominguez |  ligula.Aliquam.eratsemperegestasurna.com |  NY   |   40302  | Feb 27, 1963 |   0   |    INVALID_EMAIL_ERROR   |     
-        | OneOrderInvalidZipcodeSum.csv |  2499 | Stone Dominguez |  ligula.Aliquam.erat@semperegestasurna.com |  IA   |   15938  | Feb 27, 1963 |   0   |       SUM_MAX_ERROR      |  
+        | OneOrderInvalidZipcodeSum.csv |  2499 | Stone Dominguez |  ligula.Aliquam.erat@semperegestasurna.com |  IA   |   15938  | Feb 27, 1963 |   0   |       SUM_MAX_ERROR      | 
+        | OneValidOrderSameHeadersDifferentOrder.csv |  2499 | Stone Dominguez |  ligula.Aliquam.erat@semperegestasurna.com |  IA   |   40302  | Feb 27, 1963 |   1   |                None              |
+        | OneValidOrderHeadersMissingBirthday.csv |  2499 | Stone Dominguez |  ligula.Aliquam.erat@semperegestasurna.com |  IA   |   40302  | None |   1   |                None              |
+        
+        
 
 
 
