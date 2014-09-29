@@ -9,7 +9,7 @@ import sys, os
 import json
 
 sys.path.append(os.path.abspath(os.pardir))
-global db, Order, schema, dependent_schema, order_fields
+global db, Order, schema, dependent_schema, order_fields, fields_list
 
 
 from api.config.validation_constants import DATE_FORMAT, US_STATES
@@ -50,9 +50,9 @@ parser.add_argument('state', type=str, choices=US_STATES, help='the parameter va
 parser.add_argument('zipcode', type=int, help='the parameter value for zipcode must be a number', **arg_kwargs)
 
 def get_imports():
-    global db, Order, schema, dependent_schema, order_fields
+    global db, Order, schema, dependent_schema, order_fields, fields_list
     from flaskr import db, schema, dependent_schema, order_fields
-    from models import Order
+    from models import Order, fields_list
 
 
 class Orders(Resource):
@@ -81,80 +81,99 @@ class FullOrder(Resource):
 
 
 class OrderImport(Resource):
-    def get(self):
-        get_imports()
-        return {'hello': 'world'}
 
     def add_to_error_list(self, values, field_name, error):
+        """Add the error_message to the list of errors"""
         if 'errors' in values and values['errors']:
             values['errors'].append({"field":field_name, "errors":error.error_message})
         else:
             values['errors'] = [{"field":field_name, "errors":error.error_message}]
 
-
     def put(self):
         get_imports()
-        lines = request.form['data'].split('\\n') #TODO: tell user that param is called data with reqparse
-        csvreader = csv.reader(lines, delimiter='|')
-        headers = csvreader.next()
+        try:
+            lines = request.form['data']
+        except KeyError:
+            abort(400, message='Param `data` is required to insert orders')
+        if '|' not in lines:
+            abort(400, message='Expected csv data to be separated with `|`.')
+        try:
+            csvreader = csv.reader(lines.split('\\n'), delimiter='|')
+        except Exception as e:
+            abort(400, message='Error found in reading data as `|` separated csv data. Error is: %s' % str(e))
         
+        headers = csvreader.next()
+
         for row in csvreader:
+
             values = {'valid':True, 'errors':None}
             for i, item in enumerate(row):
                 # create dictionary of column-name:field-value
                 values.update({headers[i]: item})
-
-            # validate the row
+            
+            # validate the whole row first
             try:
                 values = schema(values)
             except MultipleInvalid as e:
+                # errors were found, loop through keys to validate and get the value to store and the errors for individual fields
                 
-                # errors were found, loop through keys to get the correct value and the errors for individual fields
+                # validate the required fields first
                 for field_name in schema.schema.keys():
-
                     if str(field_name) in order_fields['order_fields_validators']['required_fields'].keys():
+                        
                         field_name = str(field_name)
-                        # required field errors
-                         
                         field_schema = create_schema_from_config({field_name:order_fields['order_fields_validators']['required_fields'][field_name]})
                  
                         try:
                             values.update(field_schema({field_name:values[field_name]}))
+                        except KeyError:
+                            # a required field is not present, abort
+                            abort(400, message='missing `%s` which is a required field' % field_name)
                         except MultipleInvalid as e:
-                            print 'problem again', e
-                            abort('problem validating')
-                    elif field_name in order_fields['order_fields_validators']['optional_fields'].keys():
-                        # optional field errors
+                            # a required field does not validate, abort
+                            abort(400, message='problem validating required field `%s`, error message is: %s' % (field_name, e.errors[0].error_message))
+                
+                # now validate the optional fields
+                for field_name in schema.schema.keys():
+                    if field_name in order_fields['order_fields_validators']['optional_fields'].keys():
+                        
                         field_schema = create_schema_from_config({field_name:order_fields['order_fields_validators']['optional_fields'][field_name]})
+                        
                         try:
                             values.update(field_schema({field_name:values[field_name]}))
                         except MultipleInvalid as e:
-
-                
                             
                             values['valid'] = False
                             
-                            for error in e.errors: # loops through each field in the schema that raised errors
-                                
+                            # loops through each field in the schema that raised errors
+                            for error in e.errors: 
                                 self.add_to_error_list(values, field_name, error)
 
+                                # check if the field requires a default when validation to coerce it fails
                                 if error.path and len(error.path) == 1:
                                     order_fields_defaults = order_fields['order_fields_defaults']
+
                                     if field_name in order_fields_defaults:
-                                        # this is a field that requires a replacement value if type/format coercion fails
+                                        # this is a field that requires a replacement value 
                                         if order_fields_defaults[field_name]['coerce_failure_msg'] == error.error_message:
                                             # the error message corresponds to the coercion error message, update with replacement value
                                             values[field_name] = order_fields_defaults[field_name]['failure_value']
                                         else:
                                             # the coercion was successul but another validation requirement failed.
-                                            # coerce again to avoid database Type Errors
-                                            coerce_schema = create_schema_from_config({field_name:{'functions':{'CoerceTo':order_fields['order_fields_validators']['optional_fields'][field_name]['functions']['CoerceTo']}}})
-                                            
+                                            # coerce again to avoid database Type Errors upon insertion
+                                            coerce_schema = create_schema_from_config({field_name:{
+                                                            'functions':{
+                                                                'CoerceTo':
+                                                                    order_fields['order_fields_validators']['optional_fields'][field_name]['functions']['CoerceTo']
+                                                            }}})
                                             values.update(coerce_schema({field_name:values[field_name]}))
                     else:
                         pass
-                        # field name not in schema at all
+                        # field name not in schema at all, a future implementation would add the database field here
+            
+            # validation that depends on more than one field
             if dependent_schema:
+                
                 try:
                     dependent_schema(values)
                 except MultipleInvalid as e:
@@ -162,12 +181,12 @@ class OrderImport(Resource):
                     for error in e.errors:
                         self.add_to_error_list(values, 'multiple fields', error)
             
+            # validation is complete, now do some prep and then add the record to the db session
             if 'errors' in values and values['errors']:
                 values['errors'] = json.dumps(values['errors'])
-                
-            # create database record
             order = Order(**values)
             db.session.merge(order)
+
         db.session.commit()
         return {'success':True}
 

@@ -1,6 +1,8 @@
 # Database Model
 import flaskr
 
+fields_list = 'name email state zipcode birthday valid errors'.split()
+
 class Order(flaskr.db.Model):
     __tablename__ =  'orders'
 

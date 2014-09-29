@@ -9,11 +9,10 @@ from datetime import date
 from lettuce import * 
 from util import get_base_error_message
 from api.config.validation_constants import *
-from api.models import Order
+from api.models import Order, fields_list
 from api.resources import basic_resource_fields
 from terrain import init_db
 
-field_types = 'name email state zipcode birthday valid errors'.split()
 
 # --------- Steps to prepare data fixtures --------- #
 
@@ -85,7 +84,7 @@ def check_list_order_errors(step, expected_ids, expected_values):
     check_list_order_fields(step, expected_ids, 'errors', expected_values)
 
 def check_list_order_fields(step, expected_ids, field_type, expected_values):
-    if field_type not in field_types:
+    if field_type not in fields_list:
         assert False, 'The test is not set up correctly. The field %s is not valid' % field_type
     expected_ids = [int(i) for i in expected_ids[1:-1].split(';')]
     expected_values = [val.strip(' ') for val in expected_values[1:-1].split(';')]
