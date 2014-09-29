@@ -97,8 +97,9 @@ class OrderImport(Resource):
         lines = request.form['data'].split('\\n') #TODO: tell user that param is called data with reqparse
         csvreader = csv.reader(lines, delimiter='|')
         headers = csvreader.next()
-        values = {}
+        
         for row in csvreader:
+            values = {'valid':True, 'errors':None}
             for i, item in enumerate(row):
                 # create dictionary of column-name:field-value
                 values.update({headers[i]: item})
@@ -158,18 +159,15 @@ class OrderImport(Resource):
                     dependent_schema(values)
                 except MultipleInvalid as e:
                     values['valid'] = False
-
                     for error in e.errors:
                         self.add_to_error_list(values, 'multiple fields', error)
             
             if 'errors' in values and values['errors']:
                 values['errors'] = json.dumps(values['errors'])
-            else:
-                values['errors'] = None
                 
             # create database record
             order = Order(**values)
-            db.session.add(order)
+            db.session.merge(order)
         db.session.commit()
         return {'success':True}
 

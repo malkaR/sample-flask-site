@@ -18,3 +18,14 @@ Feature: Import Orders In Bulk
     Examples:
         |      file_name     |    id_list      |            name_list         |     email_list    |  state_list  |     zipcode_list    |      birthday_list      | valid_list    | errors_list    |
         | TwoValidOrders.csv |  [3887; 39702]  | [Stone Dominguez; Davis Walters] |  [ligula.Aliquam.erat@semperegestasurna.com; euismod@sit.edu]   |   [NY; KS]    |   [13234; 67102]   |  [Feb 27, 1963; Mar 21, 1941]  |  [1; 1]    |   [None; None]   | 
+        | TwoValidOrdersSamePrimaryKey.csv |  [3887]  | [Davis Walters] |  [euismod@sit.edu]   |   [KS]    |   [67102]   |  [Mar 21, 1941]  |  [1]    |   [None]   | 
+        | TwoOrdersSamePrimaryKeyFirstInvalidSecondValid.csv |  [3887]  | [Stone Dominguez] |  [ligula.Aliquam.erat@semperegestasurna.com]   |   [NY]    |   [13234]   |  [Feb 27, 1963]  |  [1]    |   [None]   | 
+        | TwoOrdersSamePrimaryKeyFirstValidSecondInvalid.csv |  [3887]  | [Stone Dominguez] |  [ligula.Aliquam.erat@semperegestasurna.net]   |   [NY]    |   [13234]   |  [Feb 27, 1963]  |  [0]    |   [NY_EMAIL_ERROR]   | 
+
+
+
+
+
+
+
+
