@@ -1,22 +1,26 @@
-
-from flask import request, make_response
-from flask.ext.restful import abort, Resource, fields, marshal, reqparse
-
-
-from voluptuous import Schema, Required, All, Length, Range, Error, MultipleInvalid, Invalid, Any, Match, In
 import csv
 import sys, os 
 import json
+from datetime import datetime
+
+from flask import request, make_response
+from flask.ext.restful import abort, Resource, fields, marshal, reqparse
+from voluptuous import Schema, Required, All, Length, Range, Error, MultipleInvalid, Invalid, Any, Match, In
 
 sys.path.append(os.path.abspath(os.pardir))
-global db, Order, schema, dependent_schema, order_fields, fields_list
-
-
 from api.config.validation_constants import DATE_FORMAT, US_STATES
 from api.validation.formatter import create_schema_from_config
 
-from datetime import datetime
+# global fields - these can't be imported yet to prevent circular imports
+global db, Order, schema, dependent_schema, order_fields, fields_list
 
+def get_imports():
+    """import at runtime to prevent circular imports"""
+    global db, Order, schema, dependent_schema, order_fields, fields_list
+    from flaskr import db, schema, dependent_schema, order_fields
+    from models import Order, fields_list
+
+# Fields and their types for JSON Responses
 class DateField(fields.Raw):
     def format(self, value):
         return datetime.strftime(value, DATE_FORMAT)
@@ -43,23 +47,19 @@ full_resource_fields.update(basic_resource_fields)
 
 BOOLEAN_CHOICES = ['0', '1']
 
+# Orders resource parser
 parser = reqparse.RequestParser()
 arg_kwargs = dict(location='args', default=None)
 parser.add_argument('valid', type=int, choices=BOOLEAN_CHOICES, help='the parameter value for valid must be either 1 or 0',  **arg_kwargs)
 parser.add_argument('state', type=str, choices=US_STATES, help='the parameter value for state must be an uppercase abbreviated US state', **arg_kwargs)
 parser.add_argument('zipcode', type=int, help='the parameter value for zipcode must be a number', **arg_kwargs)
 
-def get_imports():
-    global db, Order, schema, dependent_schema, order_fields, fields_list
-    from flaskr import db, schema, dependent_schema, order_fields
-    from models import Order, fields_list
-
 
 class Orders(Resource):
 
     def get(self):
         """
-        Returns the list of orders.
+        Returns the list of orders. Filter by any of the valid, state, or zipcode arguments.
         For example:
         {"results": [{"order_id": 4453, 
                       "name": "Guido van Rossum", 
@@ -73,9 +73,11 @@ class Orders(Resource):
                 filter_kwargs.update({arg:args[arg]})
         return {"results": marshal(db.session.query(Order).filter_by(**filter_kwargs).all(), basic_resource_fields)}
 
+
 class FullOrder(Resource):
 
     def get(self, order_id):
+        """Return the full details of a given order"""
         get_imports()
         return marshal(db.session.query(Order).filter_by(id=order_id).first(), full_resource_fields)
 
@@ -90,6 +92,7 @@ class OrderImport(Resource):
             values['errors'] = [{"field":field_name, "errors":error.error_message}]
 
     def put(self):
+        """Insert new orders from the csv data provided in the data parameter."""
         get_imports()
         try:
             lines = request.form['data']
@@ -103,6 +106,7 @@ class OrderImport(Resource):
             abort(400, message='Error found in reading data as `|` separated csv data. Error is: %s' % str(e))
         
         headers = csvreader.next()
+        ids_inserted_updated = []
 
         for row in csvreader:
 
@@ -186,7 +190,8 @@ class OrderImport(Resource):
                 values['errors'] = json.dumps(values['errors'])
             order = Order(**values)
             db.session.merge(order)
+            ids_inserted_updated.append(order.id)
 
         db.session.commit()
-        return {'success':True}
+        return {"results": marshal(db.session.query(Order).filter(Order.id.in_(ids_inserted_updated)).all(), full_resource_fields)}, 201 #
 

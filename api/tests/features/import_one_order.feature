@@ -12,7 +12,7 @@ Feature: Import One Order
         Then I see the order birthday <birthday> present in the database
         Then I see the order validity <valid> present in the database
         Then I see the order validation errors <errors> present in the database
-        Then I receive a successful status code of 200
+        Then I receive a successful status code of 201
 
          
 

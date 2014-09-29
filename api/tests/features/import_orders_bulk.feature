@@ -4,7 +4,7 @@ Feature: Import Orders In Bulk
         Given I delete and recreate the database
         And I read the contents of a csv file containing orders from <file_name>
         When I do an http put request with the file string data
-        Then I receive a successful status code of 200
+        Then I receive a successful status code of 201
         Then I see the list of order ids <id_list> present in the database
         Then for each order in the <id_list> I verify the name fields in <name_list> are correct
         Then for each order in the <id_list> I verify the email fields in <email_list> are correct

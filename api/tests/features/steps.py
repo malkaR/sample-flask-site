@@ -1,12 +1,11 @@
 import os
 import sys
 import json
-
-
-sys.path.append('/Users/malka/Documents/job/Lot18Code/')
-
 from datetime import date
+
 from lettuce import * 
+
+sys.path.append(os.path.abspath(os.pardir))
 from util import get_base_error_message
 from api.config.validation_constants import *
 from api.models import Order, fields_list
